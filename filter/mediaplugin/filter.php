@@ -161,7 +161,7 @@ function mediaplugin_filter_swf_callback($link) {
 <script type="text/javascript">
 //<![CDATA[
   var FO = { movie:"'.$url.'", width:"'.$width.'", height:"'.$height.'", majorversion:"6", build:"40",
-    allowscriptaccess:"never", quality: "high" };
+    allowscriptaccess:"never", quality: "high", wmode:"transparent" };
   UFO.create(FO, "'.$id.'");
 //]]>
 </script>';
