@@ -58,10 +58,6 @@
 
     require_login($course->id, false, $cm);
 
-    if (!isloggedin() or isguest()) {
-        redirect('view.php?d='.$data->id);
-    }
-
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 
 /// If it's hidden then it doesn't show anything.  :)
@@ -130,6 +126,18 @@
         $currentgroup = 0;
     }
 
+    if (!isloggedin() or isguest()) {
+        notice_yesno(get_string('guestsnotallowed', 'data'), $CFG->wwwroot.'/login/index.php', 'view.php?d='.$data->id);   
+        print_footer($course);
+        die;
+    } else {
+        if (has_capability('moodle/legacy:guest', $context, NULL, false)) {
+            notice_yesno(get_string('mustenrol', 'data'), $CFG->wwwroot.'/course/enrol.php?id='.$course->id, 'view.php?d='.$data->id);
+            print_footer($course);
+            die;
+        }
+    }
+    
 /// Print the tabs
 
     $currenttab = 'add';
