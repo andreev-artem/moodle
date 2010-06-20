@@ -1133,7 +1133,13 @@ class assignment_base {
 
         // Start working -- this is necessary as soon as the niceties are over
         $table->setup();
-
+        if(!array_key_exists('timemarked', $table->sess->sortby)) {
+            $table->sess->sortby = array_merge($table->sess->sortby, array('timemarked'=>SORT_ASC));
+        }
+        if(!array_key_exists('timemodified', $table->sess->sortby)) {
+            $table->sess->sortby = array_merge($table->sess->sortby, array('timemodified'=>SORT_ASC));
+        }
+        
         if (empty($users)) {
             print_heading(get_string('nosubmitusers','assignment'));
             return true;
