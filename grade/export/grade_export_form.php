@@ -110,22 +110,49 @@ class grade_export_form extends moodleform {
 
         // Grab the grade_seq for this course
         $gseq = new grade_seq($COURSE->id, $switch);
-
         if ($grade_items = $gseq->items) {
-            $needs_multiselect = false;
+            $lastcat = 0;
+            $elements = array();
             foreach ($grade_items as $grade_item) {
                 if (!empty($features['idnumberrequired']) and empty($grade_item->idnumber)) {
                     $mform->addElement('advcheckbox', 'itemids['.$grade_item->id.']', $grade_item->get_name(), get_string('noidnumber', 'grades'));
                     $mform->hardFreeze('itemids['.$grade_item->id.']');
                 } else {
-                    $mform->addElement('advcheckbox', 'itemids['.$grade_item->id.']', $grade_item->get_name(), null, array('group' => 1));
+                    if ($grade_item->categoryid == NULL) {
+                        $itemgroup = $grade_item->iteminstance;
+                    } else {
+                        $itemgroup = $grade_item->categoryid;
+                    }
+
+                    if ($grade_item->categoryid == NULL && !$switch) {
+                        if ($grade_item->itemtype == 'category') {
+                            $catname = grade_item::fetch(array('id'=>$grade_item->id))->get_item_category()->fullname;
+                            $mform->addElement('static', 'separator['.$grade_item->id.']', '<hr>'.$catname);
+                        }
+                        $this->add_checkbox_controller($itemgroup, null, null, 1);
+                    }
+                    
+                    if ($grade_item->categoryid != NULL && $grade_item->categoryid != $lastcat && !$switch) {
+                        $mform->addElement('static', 'separator['.$grade_item->id.']', '<hr>');
+                    }
+                    
+                    if ($grade_item->categoryid != $lastcat && $grade_item->categoryid != 0 && $lastcat != 0 && $switch) {
+                        $catname = grade_category::fetch(array('id'=>$grade_item->categoryid))->fullname;
+                        $mform->addElement('static', 'separator['.$grade_item->id.']', '<hr>'.$catname);
+                    }
+                                        
+                    $elements[] = $mform->addElement('advcheckbox', 'itemids['.$grade_item->id.']', null, $grade_item->get_name(), array('group' => $itemgroup));
                     $mform->setDefault('itemids['.$grade_item->id.']', 1);
-                    $needs_multiselect = true;
+                    
+                    if ($grade_item->categoryid == NULL && $switch) {
+                        $this->add_checkbox_controller($itemgroup, null, null, 1);
+                        if ($grade_item->itemtype == 'category') {
+                            $mform->addElement('static', 'separator['.$grade_item->id.']', '<hr>');
+                        }
+                    }
+                    
+                    $lastcat = ( $switch ? $grade_item->categoryid : $itemgroup );
                 }
-            }
-            
-            if ($needs_multiselect) {
-                $this->add_checkbox_controller(1, null, null, 1); // 1st argument is group name, 2nd is link text, 3rd is attributes and 4th is original value
             }
         }
 
