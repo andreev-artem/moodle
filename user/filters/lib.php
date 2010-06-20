@@ -33,7 +33,7 @@ class user_filtering {
         }
 
         if (empty($fieldnames)) {
-            $fieldnames = array('realname'=>0, 'lastname'=>1, 'firstname'=>1, 'email'=>1, 'city'=>1, 'country'=>1,
+            $fieldnames = array('realname'=>0, 'lastname'=>1, 'firstname'=>1, 'email'=>0, 'city'=>1, 'country'=>1,
                                 'confirmed'=>1, 'profile'=>1, 'courserole'=>1, 'systemrole'=>1,
                                 'firstaccess'=>1, 'lastaccess'=>1, 'lastlogin'=>1, 'timemodified'=>1, 'username'=>1, 'auth'=>1, 'mnethostid'=>1);
         }
@@ -49,6 +49,9 @@ class user_filtering {
         // fist the new filter form
         $this->_addform = new user_add_filter_form($baseurl, array('fields'=>$this->_fields, 'extraparams'=>$extraparams));
         if ($adddata = $this->_addform->get_data(false)) {
+            if (!empty($adddata->replacefilters)) {
+                $SESSION->user_filtering = array();
+            }
             foreach($this->_fields as $fname=>$field) {
                 $data = $field->check_data($adddata);
                 if ($data === false) {
