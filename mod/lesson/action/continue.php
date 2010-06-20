@@ -114,7 +114,7 @@
                     $ignorecase = '';
                     if ( substr($expectedanswer,strlen($expectedanswer) - 2, 2) == '/i') {
                         $expectedanswer = substr($expectedanswer,0,strlen($expectedanswer) - 2);
-                        $ignorecase = 'i';
+                        $ignorecase = 'ui';
                     }
                 } else {
                     $expectedanswer = str_replace('*', '#####', $expectedanswer);
@@ -124,7 +124,7 @@
                 // see if user typed in any of the correct answers
                 if ((!$lesson->custom && lesson_iscorrect($pageid, $answer->jumpto)) or ($lesson->custom && $answer->score > 0) ) {
                     if (!$useregexp) { // we are using 'normal analysis', which ignores case
-                        if (preg_match('/^'.$expectedanswer.'$/i',$useranswer)) {
+                        if (preg_match('/^'.$expectedanswer.'$/ui',$useranswer)) {
                             $ismatch = true;
                         }
                     } else {
@@ -138,7 +138,7 @@
                 } else {
                    if (!$useregexp) { //we are using 'normal analysis'
                         // see if user typed in any of the wrong answers; don't worry about case
-                        if (preg_match('/^'.$expectedanswer.'$/i',$useranswer)) {
+                        if (preg_match('/^'.$expectedanswer.'$/ui',$useranswer)) {
                             $ismatch = true;
                         }
                     } else { // we are using regular expressions analysis

@@ -537,9 +537,10 @@
         if (!$lesson->slideshow) {
             $options = new stdClass;
             $options->noclean = true;
+            $options->para = false;
             print_simple_box('<div class="contents">'.
                             format_text($page->contents, FORMAT_MOODLE, $options).
-                            '</div>', 'center');
+                            '<div class="clearer"> </div></div>', 'center');
         }
         
         // this is for modattempts option.  Find the users previous answer to this page,
@@ -563,7 +564,7 @@
                 echo "<input type=\"hidden\" name=\"pageid\" value=\"$pageid\" />";
                 echo "<input type=\"hidden\" name=\"sesskey\" value=\"".sesskey()."\" />";
                 print_simple_box_start("center");
-                echo '<table width="100%">';
+                echo '<table>';
             }
             // default format text options
             $options = new stdClass;
@@ -879,16 +880,18 @@
                 } else {
                     echo "<div style=\"text-align:center;\">".get_string("displayscorewithoutessays", "lesson", $a)."</div>";                        
                 }
-                $a = new stdClass;
-                $a->grade = number_format($gradeinfo->grade * $lesson->grade / 100, 1);
-                $a->total = $lesson->grade;
-                echo "<p style=\"text-align:center;\">".get_string('yourcurrentgradeisoutof', 'lesson', $a)."</p>\n";
+                if($lesson->grade) {
+                    $a = new stdClass;
+                    $a->grade = number_format($gradeinfo->grade * $lesson->grade / 100, 1);
+                    $a->total = $lesson->grade;
+                    echo "<p style=\"text-align:center;\">".get_string('yourcurrentgradeisoutof', 'lesson', $a)."</p>\n";
+                }
                     
                 $grade->lessonid = $lesson->id;
                 $grade->userid = $USER->id;
                 $grade->grade = $gradeinfo->grade;
                 $grade->completed = time();
-                if (!$lesson->practice) {
+                //if (!$lesson->practice) {
                     if (isset($USER->modattempts[$lesson->id])) { // if reviewing, make sure update old grade record
                         if (!$grades = get_records_select("lesson_grades", "lessonid = $lesson->id and userid = $USER->id", "completed")) {
                             error("Could not find Grade Records");
@@ -903,11 +906,11 @@
                             error("Navigation: grade not inserted");
                         }
                     }
-                } else {
-                    if (!delete_records("lesson_attempts", "lessonid", $lesson->id, "userid", $USER->id, "retry", $ntries)) {
-                        error("Could not delete lesson attempts");
-                    }
-                }
+                //} else {
+                    //if (!delete_records("lesson_attempts", "lessonid", $lesson->id, "userid", $USER->id, "retry", $ntries)) {
+                    //    error("Could not delete lesson attempts");
+                    //}
+                //}
             } else {
                 if ($lesson->timed) {
                     if ($outoftime == 'normal') {
@@ -916,11 +919,11 @@
                         $grade->userid = $USER->id;
                         $grade->grade = 0;
                         $grade->completed = time();
-                        if (!$lesson->practice) {
+                        //if (!$lesson->practice) {
                             if (!$newgradeid = insert_record("lesson_grades", $grade)) {
                                 error("Navigation: grade not inserted");
                             }
-                        }
+                        //}
                         echo get_string("eolstudentoutoftimenoanswers", "lesson");
                     }
                 } else {
@@ -1017,7 +1020,9 @@
         }
 
         echo "<div style=\"text-align:center; padding:5px;\" class=\"lessonbutton standardbutton\"><a href=\"$CFG->wwwroot/course/view.php?id=$course->id\">".get_string('returnto', 'lesson', format_string($course->fullname, true))."</a></div>\n";
-        echo "<div style=\"text-align:center; padding:5px;\" class=\"lessonbutton standardbutton\"><a href=\"$CFG->wwwroot/grade/index.php?id=$course->id\">".get_string('viewgrades', 'lesson')."</a></div>\n";
+        if($lesson->grade) {
+            echo "<div style=\"text-align:center; padding:5px;\" class=\"lessonbutton standardbutton\"><a href=\"$CFG->wwwroot/grade/index.php?id=$course->id\">".get_string('viewgrades', 'lesson')."</a></div>\n";
+        }
     }
 
 /// Finish the page

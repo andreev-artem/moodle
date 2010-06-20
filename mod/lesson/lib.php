@@ -402,7 +402,7 @@ function lesson_grade_item_update($lesson, $grades=NULL) {
         $params = array('itemname'=>$lesson->name);
     }
 
-    if ($lesson->grade > 0) {
+    if (!$lesson->practice and $lesson->grade > 0) {
         $params['gradetype']  = GRADE_TYPE_VALUE;
         $params['grademax']   = $lesson->grade;
         $params['grademin']   = 0;
