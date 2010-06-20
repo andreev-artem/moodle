@@ -4,6 +4,9 @@
 
     require_once("../../config.php");
     require_once('locallib.php');
+    require_once('reportsettings_form.php');    
+
+    define('SCORM_REPORT_DEFAULT_PAGE_SIZE', 20);
 
     $id = optional_param('id', '', PARAM_INT);    // Course Module ID, or
     $a = optional_param('a', '', PARAM_INT);     // SCORM ID
@@ -12,6 +15,7 @@
     $attempt = optional_param('attempt', '1', PARAM_INT);  // attempt number
     $action     = optional_param('action', '', PARAM_ALPHA);
     $attemptids = optional_param('attemptid', array(), PARAM_RAW); //get array of responses to delete.
+    $page = optional_param('page', 1, PARAM_INT);  // report page
 
     if (!empty($id)) {
         if (! $cm = get_coursemodule_from_id('scorm', $id)) {
@@ -70,7 +74,7 @@
             if (empty($a)) {
                 $navigation = build_navigation($strreport, $cm);
                 print_header("$course->shortname: ".format_string($scorm->name), $course->fullname,$navigation,
-                             '', '', true);
+                             '', '', true, update_module_button($cm->id, $course->id, $strscorm));
             } else {
 
                 $navlinks = array();
@@ -79,7 +83,7 @@
                 $navigation = build_navigation($navlinks, $cm);
 
                 print_header("$course->shortname: ".format_string($scorm->name), $course->fullname,
-                             $navigation, '', '', true);
+                             $navigation, '', '', true, update_module_button($cm->id, $course->id, $strscorm));
             }
         } else {
 
@@ -90,7 +94,7 @@
             $navigation = build_navigation($navlinks, $cm);
 
             print_header("$course->shortname: ".format_string($scorm->name), $course->fullname, $navigation,
-                     '', '', true);
+                     '', '', true, update_module_button($cm->id, $course->id, $strscorm));
         }
         print_heading(format_string($scorm->name));
     }
@@ -107,21 +111,35 @@
         if (empty($a)) {
             // No options, show the global scorm report
 
-            if (!empty($CFG->enablegroupings) && !empty($cm->groupingid)) {
-                $sql = "SELECT st.userid, st.scormid
-                        FROM {$CFG->prefix}scorm_scoes_track st
-                            INNER JOIN {$CFG->prefix}groups_members gm ON st.userid = gm.userid
-                            INNER JOIN {$CFG->prefix}groupings_groups gg ON gm.groupid = gg.groupid
-                        WHERE st.scormid = {$scorm->id} AND gg.groupingid = {$cm->groupingid}
-                        GROUP BY st.userid,st.scormid
-                        ";
+            $mform = new mod_scorm_report_settings( $CFG->wwwroot.'/mod/scorm/report.php?id='.$id );
+            if ($fromform = $mform->get_data()) {
+                set_user_preference('scorm_report_detailed', $fromform->detailedrep);
+                set_user_preference('scorm_report_pagesize', $fromform->pagesize);
+                $detailedrep = $fromform->detailedrep;
+                $pagesize = $fromform->pagesize;
             } else {
+                $detailedrep = get_user_preferences('scorm_report_detailed', false);
+                $pagesize = get_user_preferences('scorm_report_pagesize', 0);
+            }
+            if ($pagesize < 1) {
+                $pagesize = SCORM_REPORT_DEFAULT_PAGE_SIZE;
+            }
+
+            //if (!empty($CFG->enablegroupings) && !empty($cm->groupingid)) {
+            //    $sql = "SELECT st.userid, st.scormid
+            //            FROM {$CFG->prefix}scorm_scoes_track st
+            //                INNER JOIN {$CFG->prefix}groups_members gm ON st.userid = gm.userid
+            //                INNER JOIN {$CFG->prefix}groupings_groups gg ON gm.groupid = gg.groupid
+            //            WHERE st.scormid = {$scorm->id} AND gg.groupingid = {$cm->groupingid}
+            //            GROUP BY st.userid,st.scormid
+            //            ";
+            //} else {
                 $sql = "SELECT st.userid, st.scormid
                         FROM {$CFG->prefix}scorm_scoes_track st
                         WHERE st.scormid = {$scorm->id}
                         GROUP BY st.userid,st.scormid
                         ";
-            }
+            //}
 
             if ($scousers=get_records_sql($sql)) {
                 $table = new stdClass();
@@ -164,6 +182,19 @@
                 $table->wrap[] = 'nowrap';
                 $table->size[] = '*';
 
+                if ($detailedrep && $scoes = get_records_select('scorm_scoes',"scorm='$scorm->id' ORDER BY id")) {
+                    foreach ($scoes as $sco) {
+                        if ($sco->launch!='') {
+                            $table->head[]= format_string($sco->title);
+                            $table->align[] = 'center';
+                            $table->wrap[] = '';
+                            $table->size[] = '*';
+                        }
+                    }
+                } else {
+                    $scoes = NULL;
+                }
+                
                 foreach($scousers as $scouser){
                     $userdata = scorm_get_user_data($scouser->userid);
                     $attempt = scorm_get_last_attempt($scorm->id,$scouser->userid);
@@ -189,9 +220,77 @@
                         $row[] = userdate($timetracks->start, get_string('strftimedaydatetime'));
                         $row[] = userdate($timetracks->finish, get_string('strftimedaydatetime'));
                         $row[] = scorm_grade_user_attempt($scorm, $scouser->userid, $a);
+                        // print out all scores of attempt
+                        if ($scoes) {
+                            foreach ($scoes as $sco) {
+                                if ($sco->launch!='') {
+                                    if ($trackdata = scorm_get_tracks($sco->id,$scouser->userid,$attempt)) {
+                                        if ($trackdata->status == '') {
+                                            $trackdata->status = 'notattempted';
+                                        }
+                                        $strstatus = get_string($trackdata->status, 'scorm');
+                                        // if raw score exists, print it
+                                        if ($trackdata->score_raw != '') {
+                                            $score = $trackdata->score_raw;
+                                            // add max score if it exists
+                                            if ($scorm->version == 'SCORM_1.3') {
+                                                $maxkey = 'cmi.score.max';
+                                            } else {
+                                                $maxkey = 'cmi.core.score.max';
+                                            }
+                                            if (isset($trackdata->$maxkey)) {
+                                                $score .= '/'.$trackdata->$maxkey;
+                                            }
+                                        // else print out status
+                                        } else {
+                                            $score = $strstatus;
+                                        }
+                                        $row[] = '<img src="'.$scormpixdir.'/'.$trackdata->status.'.gif" alt="'.$strstatus.'" title="'.$strstatus.'" />&nbsp;
+                                                  <a href="report.php?b='.$sco->id.'&amp;user='.$scouser->userid.'&amp;attempt='.$attempt.
+                                                 '" title="'.get_string('details','scorm').'">'.$score.'</a>';
+                                    } else {
+                                        // if we don't have track data, we haven't attempted yet
+                                        $strstatus = get_string('notattempted', 'scorm');
+                                        $row[] = '<img src="'.$scormpixdir.'/notattempted.gif" alt="'.$strstatus.'" title="'.$strstatus.'" />&nbsp;'.$strstatus;
+                                    }
+                                }
+                            }
+                        }
                         $table->data[] = $row;
                     }
                 }
+                
+                $totalpages = ceil( count($table->data) / $pagesize );
+                if ($page < 1 || $page > $totalpages) {
+                    $page = 1;
+                }
+                $table->data = array_slice($table->data, ($page-1)*$pagesize, $pagesize);
+                
+                if ($totalpages > 1) {
+                    $pagelist = get_string('page'). ':&nbsp;';
+                    if ($page != 1) {
+                        $pagelist .= '&nbsp;(<a href="'.$CFG->wwwroot.'/mod/scorm/report.php?id='.$id.'&page='.($page-1).'">'.get_string('previous').'</a>)&nbsp;';
+                    }
+                    for($i = 1; $i <= $totalpages; $i++) {
+                        if ($i != $page) {
+                            $pagelist .= '&nbsp;<a href="'.$CFG->wwwroot.'/mod/scorm/report.php?id='.$id.'&page='.$i.'">'.$i.'</a>&nbsp;';
+                        } else {
+                            $pagelist .= '&nbsp;<b>'.$i.'</b>&nbsp;';
+                        }
+                    }
+                    if ($page != $totalpages) {
+                        $pagelist .= '&nbsp;(<a href="'.$CFG->wwwroot.'/mod/scorm/report.php?id='.$id.'&page='.($page+1).'">'.get_string('next').'</a>)';
+                    }
+                } else {
+                    $pagelist = '';
+                }
+                
+                if ($pagelist != '') {
+                    echo '<div align="center">';
+                    echo $pagelist;
+                    echo '</div><br />';
+                }
+                                
                 echo '<div id="scormtablecontainer">';
                 if (has_capability('mod/scorm:deleteresponses',$contextmodule)) {
                     echo '<form id="attemptsform" method="post" action="'.$_SERVER['PHP_SELF'].'" onsubmit="var menu = document.getElementById(\'menuaction\'); return (menu.options[menu.selectedIndex].value == \'delete\' ? \''.addslashes_js(get_string('deleteattemptcheck','quiz')).'\' : true);">';
@@ -210,6 +309,16 @@
                 } else {
                     print_table($table);
                 }
+
+                if ($pagelist != '') {
+                    echo '<br />';
+                    echo '<div align="center">';
+                    echo $pagelist;
+                    echo '</div>';
+                }
+                
+                $mform->set_data(compact('detailedrep', 'pagesize'));
+                $mform->display();
                 echo '</div>';
             } else {
                 notify(get_string('noactivity', 'scorm'));

@@ -1127,19 +1127,19 @@ function scorm_get_count_users($scormid, $groupingid=null) {
 
     global $CFG;
 
-    if (!empty($CFG->enablegroupings) && !empty($groupingid)) {
-        $sql = "SELECT COUNT(DISTINCT st.userid)
-                FROM {$CFG->prefix}scorm_scoes_track st
-                    INNER JOIN {$CFG->prefix}groups_members gm ON st.userid = gm.userid
-                    INNER JOIN {$CFG->prefix}groupings_groups gg ON gm.groupid = gg.groupid
-                WHERE st.scormid = $scormid AND gg.groupingid = $groupingid
-                ";
-    } else {
+    //if (!empty($CFG->enablegroupings) && !empty($groupingid)) {
+    //    $sql = "SELECT COUNT(DISTINCT st.userid)
+    //            FROM {$CFG->prefix}scorm_scoes_track st
+    //                INNER JOIN {$CFG->prefix}groups_members gm ON st.userid = gm.userid
+    //                INNER JOIN {$CFG->prefix}groupings_groups gg ON gm.groupid = gg.groupid
+    //            WHERE st.scormid = $scormid AND gg.groupingid = $groupingid
+    //            ";
+    //} else {
         $sql = "SELECT COUNT(DISTINCT st.userid)
                 FROM {$CFG->prefix}scorm_scoes_track st
                 WHERE st.scormid = $scormid
                 ";
-    }
+    //}
 
     return(count_records_sql($sql));
 }
@@ -1373,5 +1373,3 @@ function scorm_format_date_time($datetime) {
 
     return $result;
 }
-
-?>
