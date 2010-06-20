@@ -1471,6 +1471,9 @@ function get_user_timezone($tz = 99) {
     while(($tz == '' || $tz == 99 || $tz == NULL) && $next = each($timezones)) {
         $tz = $next['value'];
     }
+    if ($tz == "98") {
+        $tz = "99";
+    }
 
     return is_numeric($tz) ? (float) $tz : $tz;
 }
@@ -2088,6 +2091,8 @@ function require_login($courseorid=0, $autologinguest=true, $cm=null, $setwantsu
                     print_header_simple('', '',
                             build_navigation(array(array('name' => $strloggedinasguest, 'link' => null, 'type' => 'misc'))));
                     if (empty($USER->access['rsw'][$COURSE->context->path])) {  // Normal guest
+                        echo '<br />';
+                        print_course($COURSE);
                         notice(get_string('guestsnotallowed', '', format_string($COURSE->fullname)), "$CFG->wwwroot/login/index.php");
                     } else {
                         notify(get_string('guestsnotallowed', '', format_string($COURSE->fullname)));
@@ -6894,10 +6899,11 @@ function complex_random_string($length=null) {
 function shorten_text($text, $ideal=30, $exact = false) {
 
     global $CFG;
+    $textlib = textlib_get_instance();
     $ending = '...';
 
     // if the plain text is shorter than the maximum length, return the whole text
-    if (strlen(preg_replace('/<.*?>/', '', $text)) <= $ideal) {
+    if ($textlib->strlen(preg_replace('/<.*?>/', '', $text)) <= $ideal) {
         return $text;
     }
 
@@ -6905,7 +6911,8 @@ function shorten_text($text, $ideal=30, $exact = false) {
     // and only tag in its 'line'
     preg_match_all('/(<.+?>)?([^<>]*)/s', $text, $lines, PREG_SET_ORDER);
 
-    $total_length = strlen($ending);
+    $total_length = $textlib->strlen($ending);
+    $open_tags = array();
     $truncate = '';
 
     // This array stores information about open and close tags and their position
@@ -6936,7 +6943,7 @@ function shorten_text($text, $ideal=30, $exact = false) {
         }
 
         // calculate the length of the plain text part of the line; handle entities as one character
-        $content_length = strlen(preg_replace('/&[0-9a-z]{2,8};|&#[0-9]{1,7};|&#x[0-9a-f]{1,6};/i', ' ', $line_matchings[2]));
+        $content_length = $textlib->strlen(preg_replace('/&[0-9a-z]{2,8};|&#[0-9]{1,7};|&#x[0-9a-f]{1,6};/i', ' ', $line_matchings[2]));
         if ($total_length+$content_length > $ideal) {
             // the number of characters which are left
             $left = $ideal - $total_length;
@@ -6947,14 +6954,14 @@ function shorten_text($text, $ideal=30, $exact = false) {
                 foreach ($entities[0] as $entity) {
                     if ($entity[1]+1-$entities_length <= $left) {
                         $left--;
-                        $entities_length += strlen($entity[0]);
+                        $entities_length += $textlib->strlen($entity[0]);
                     } else {
                         // no more characters left
                         break;
                     }
                 }
             }
-            $truncate .= substr($line_matchings[2], 0, $left+$entities_length);
+            $truncate .= $textlib->substr($line_matchings[2], 0, $left+$entities_length);
             // maximum lenght is reached, so get off the loop
             break;
         } else {
@@ -6971,7 +6978,7 @@ function shorten_text($text, $ideal=30, $exact = false) {
     // if the words shouldn't be cut in the middle...
     if (!$exact) {
         // ...search the last occurance of a space...
-        for ($k=strlen($truncate);$k>0;$k--) {
+		for ($k=$textlib->strlen($truncate);$k>0;$k--) {
             if (!empty($truncate[$k]) && ($char = $truncate[$k])) {
                 if ($char == '.' or $char == ' ') {
                     $breakpos = $k+1;
@@ -6985,9 +6992,9 @@ function shorten_text($text, $ideal=30, $exact = false) {
 
         if (isset($breakpos)) {
             // ...and cut the text in this position
-            $truncate = substr($truncate, 0, $breakpos);
-        }
-    }
+            $truncate = $textlib->substr($truncate, 0, $breakpos);
+		}
+	}
 
     // add the defined ending to the text
     $truncate .= $ending;
@@ -7444,7 +7451,7 @@ function httpsrequired() {
 
     global $CFG, $HTTPSPAGEREQUIRED;
 
-    if (!empty($CFG->loginhttps)) {
+    if (!empty($CFG->loginhttps) || !empty($_SERVER['HTTPS'])) {
         $HTTPSPAGEREQUIRED = true;
         $CFG->httpswwwroot = str_replace('http:', 'https:', $CFG->wwwroot);
         $CFG->httpsthemewww = str_replace('http:', 'https:', $CFG->themewww);

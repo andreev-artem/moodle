@@ -209,7 +209,8 @@ function useredit_shared_definition(&$mform) {
     $choices = get_list_of_timezones();
     $choices['99'] = get_string('serverlocaltime');
     if ($CFG->forcetimezone != 99) {
-        $mform->addElement('static', 'forcedtimezone', get_string('timezone'), $choices[$CFG->forcetimezone]);
+        $mform->addElement('static', 'forcedtimezone', get_string('timezone'), 
+            $choices[($CFG->forcetimezone == 98 ? 99 : $CFG->forcetimezone)]);
     } else {
         $mform->addElement('select', 'timezone', get_string('timezone'), $choices);
         $mform->setDefault('timezone', '99');

@@ -743,7 +743,7 @@ function print_grade_page_head($courseid, $active_type, $active_plugin=null, $he
     }
 
     $returnval = print_header_simple($strgrades . ': ' . $stractive_type, $title, $navigation, '',
-            $bodytags, true, $buttons, navmenu($COURSE), false, '', $return);
+            '', true, $buttons, navmenu($COURSE), false, $bodytags, $return);
 
     // Guess heading if not given explicitly
     if (!$heading) {

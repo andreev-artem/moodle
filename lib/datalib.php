@@ -690,11 +690,11 @@ function get_courses_wmanagers($categoryid=0, $sort="c.sortorder ASC", $fields=a
             // take the ctx path from the first course
             // as all categories will be the same...
             $catpath = substr($catpath,1);
-            $catpath = preg_replace(':/\d+$:','',$catpath);
+            //$catpath = preg_replace(':/\d+$:','',$catpath);
             $catctxids = str_replace('/',',',$catpath);
         }
         if ($categoryclause !== '') {
-            $categoryclause = "AND $categoryclause";
+            $categoryclause = "AND ( c.id IS NULL OR $categoryclause)";
         }
         /*
          * Note: Here we use a LEFT OUTER JOIN that can
