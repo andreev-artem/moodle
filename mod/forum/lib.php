@@ -4046,6 +4046,8 @@ function forum_delete_discussion($discussion, $fulldelete=false) {
 
     $result = true;
 
+    $forum = get_record('forum', 'id', $discussion->forum);
+    $disctime = $discussion->timemodified;
     if ($posts = get_records("forum_posts", "discussion", $discussion->id)) {
         foreach ($posts as $post) {
             $post->course = $discussion->course;
@@ -4065,6 +4067,8 @@ function forum_delete_discussion($discussion, $fulldelete=false) {
         $result = false;
     }
 
+    forum_update_rss($forum, $disctime);
+    
     return $result;
 }
 
@@ -4631,6 +4635,7 @@ function forum_user_can_see_discussion($forum, $discussion, $context, $user=NULL
  */
 function forum_user_can_see_post($forum, $discussion, $post, $user=NULL, $cm=NULL) {
     global $USER;
+    global $CFG;
 
     // retrieve objects (yuk)
     if (is_numeric($forum)) {
@@ -4691,9 +4696,10 @@ function forum_user_can_see_post($forum, $discussion, $post, $user=NULL, $cm=NUL
     if ($forum->type == 'qanda') {
         $firstpost = forum_get_firstpost_from_discussion($discussion->id);
         $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
+        $userfirstpost = forum_get_user_first_post($discussion->id, $user->id);
 
-        return (forum_user_has_posted($forum->id,$discussion->id,$user->id) ||
-                $firstpost->id == $post->id ||
+        return (($userfirstpost !== false && (time() - $userfirstpost >= $CFG->maxeditingtime)) ||
+                $firstpost->id == $post->id || $post->userid == $user->id || $firstpost->userid == $user->id ||
                 has_capability('mod/forum:viewqandawithoutposting', $modcontext, $user->id, false));
     }
     return true;
@@ -6930,5 +6936,60 @@ function forum_get_open_modes() {
 function forum_get_extra_capabilities() {
     return array('moodle/site:accessallgroups', 'moodle/site:viewfullnames', 'moodle/site:trustcontent');
 }
+
+/**
+ * Returns creation time of the first user's post in given discussion
+ */
+function forum_get_user_first_post($did, $userid) {
+    global $CFG;
+
+    $sql = "SELECT p.created
+              FROM {$CFG->prefix}forum_posts p
+              WHERE p.userid = $userid AND p.discussion = $did
+              ORDER BY p.created";
+    $posts = get_record_sql($sql, true);
+    if ($posts===false) {
+        return false;
+    }
+    return $posts->created;
+}
+
+/**
+ * Checks forum RSS oldest post timestamp and updates RSS if it's less than specified one
+ * Used when user deletes post or discussion
+ */
+function forum_update_rss($forum, $time) {
+    global $CFG;
+    global $USER;
+     
+    if (empty($CFG->enablerssfeeds) || empty($CFG->forum_enablerssfeeds) || empty($forum->rsstype) || empty($forum->rssarticles)) {
+        return false;
+    }
+
+    require_once($CFG->libdir .'/rsslib.php');
+    require_once('rsslib.php');
+    require_once(MAGPIE_DIR .'rss_fetch.inc');
+    
+    $filename = rss_get_url($forum->course, $USER->id, "forum", $forum->id);
+    ob_start();
+    $rss = fetch_rss($filename);
+    ob_end_clean();
+    if ($rss === false) {
+        return false;
+    }
+    $last = end($rss->items);
+    if ($last['date_timestamp'] <= $time) {
+        $result = forum_rss_feed($forum);
+        if (!empty($result)) {
+            rss_save_file("forum",$forum,$result);
+        } else {
+            require_once($CFG->libdir . '/filelib.php');
+            fulldelete(rss_file_name("forum",$forum));
+        }
+        return true;
+    }
+    return false;
+}
+
 
 ?>

@@ -277,6 +277,7 @@
                         forum_go_back_to("discuss.php?d=$post->discussion"));
 
             } else {
+                $ptime = $post->modified;
                 if (! $post->parent) {  // post is a discussion topic as well, so delete discussion
                     if ($forum->type == 'single') {
                         notice("Sorry, but you are not allowed to delete that discussion!",
@@ -291,6 +292,8 @@
 
                 } else if (forum_delete_post($post, has_capability('mod/forum:deleteanypost', $modcontext))) {
 
+                    forum_update_rss($forum, $ptime);
+                    
                     if ($forum->type == 'single') {
                         // Single discussion forums are an exception. We show
                         // the forum itself since it only has one discussion
