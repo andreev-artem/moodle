@@ -780,6 +780,11 @@
             $displaylist['groupextendenrol.php'] = get_string('groupextendenrol');
         }
 
+        // adding "clear user data" bulk functionality
+        if (has_capability('moodle/role:assign', $context) && $context->id != $frontpagectx->id) {
+            $displaylist['clearcourseactivity.php'] = get_string( 'clearcourseactivity' );
+        }
+
         helpbutton("participantswithselectedusers", get_string("withselectedusers"));
         choose_from_menu ($displaylist, "formaction", "", get_string("withselectedusers"), "if(checksubmit(this.form))this.form.submit();", "");
         echo '<input type="hidden" name="id" value="'.$course->id.'" />';

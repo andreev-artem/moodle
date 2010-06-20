@@ -15,6 +15,7 @@ $actions = array(
         'groupextendenrol.php',
         'addnote.php',
         'groupaddnote.php',
+        'clearcourseactivity.php',
         );
 
 if (array_search($formaction, $actions) === false) {
