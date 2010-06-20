@@ -106,12 +106,12 @@ class data_field_file extends data_field_base {
     // content: "a##b" where a is the file name, b is the display name
     function update_content($recordid, $value, $name) {
         global $CFG;
-        if (!$oldcontent = get_record('data_content','fieldid', $this->field->id, 'recordid', $recordid)) {
+        if (!($oldcontent = get_record('data_content','fieldid', $this->field->id, 'recordid', $recordid))) {
         // Quickly make one now!
             $oldcontent = new object;
             $oldcontent->fieldid = $this->field->id;
             $oldcontent->recordid = $recordid;
-            if ($oldcontent->id = insert_record('data_content', $oldcontent)) {
+            if (!($oldcontent->id = insert_record('data_content', $oldcontent))) {
                 error('Could not make an empty record!');
             }
         }
@@ -128,8 +128,8 @@ class data_field_file extends data_field_base {
                 // only use the manager if file is present, to avoid "are you sure you selected a file to upload" msg
                 if ($filename){
                     require_once($CFG->libdir.'/uploadlib.php');
-                    // FIX ME: $course not defined here
-                    $um = new upload_manager($names[0].'_'.$names[1],true,false,$this->data->course,false,$this->field->param3);
+                    $course = get_record("course", "id", "{$this->data->course}");
+                    $um = new upload_manager($names[0].'_'.$names[1],true,false,$course,false,$this->field->param3);
                     if ($um->process_file_uploads($dir)) {
                         $newfile_name = $um->get_new_filename();
                         $content->content = $newfile_name;

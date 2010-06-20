@@ -2137,5 +2137,20 @@ function data_get_extra_capabilities() {
     return array('moodle/site:accessallgroups', 'moodle/site:viewfullnames');
 }
 
+function data_is_moddata_trusted() {
+    global $CFG;
+    
+    $relativepath = get_file_argument('file.php');
+    $args = explode('/', trim($relativepath, '/'));
+    $field = $args[4];
+    require_once("$CFG->dirroot/mod/data/field/$field/field.class.php");
+    $trustedfunction = $field.'_field_moddata_trusted';
+    if (function_exists($trustedfunction)) {
+        // force download of all attachments that are not trusted
+        return $trustedfunction();
+    } else {
+        return false;
+    }
+}
 
 ?>
