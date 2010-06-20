@@ -864,7 +864,14 @@ function print_recent_activity($course) {
 
 /// Firstly, have there been any new enrolments?
 
-    $users = get_recent_enrolments($course->id, $timestart);
+    $sql = "SELECT DISTINCT u.id, u.firstname, u.lastname, ra.timemodified
+                            FROM {$CFG->prefix}user u INNER JOIN
+                                 {$CFG->prefix}role_assignments ra
+                            ON u.id = ra.userid AND ra.contextid ".get_related_contexts_string($context)."
+                            WHERE ra.timemodified > '$timestart'
+                            ORDER BY ra.timemodified ASC";
+    
+    $users = get_records_sql($sql);
 
     //Accessibility: new users now appear in an <OL> list.
     if ($users) {
@@ -2388,6 +2395,8 @@ function set_coursemodule_idnumber($id, $idnumber) {
 * the course module back to what it was originally.
 */
 function set_coursemodule_visible($id, $visible, $prevstateoverrides=false) {
+    global $CFG;
+    
     if (!$cm = get_record('course_modules', 'id', $id)) {
         return false;
     }
@@ -2403,6 +2412,13 @@ function set_coursemodule_visible($id, $visible, $prevstateoverrides=false) {
             }
         }
     }
+    
+    require_once($CFG->libdir.'/gradelib.php');
+    $grade_item = grade_item::fetch(array('itemtype'=>'mod', 'itemmodule'=>$modulename, 'iteminstance'=>$cm->instance, 'courseid'=>$cm->course));
+    if ($grade_item !== false) {
+        $grade_item->set_hidden(!$visible);
+    }
+    
     if ($prevstateoverrides) {
         if ($visible == '0') {
             // Remember the current visible state so we can toggle this back.
