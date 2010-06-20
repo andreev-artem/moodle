@@ -55,6 +55,7 @@
 /// Check if the course is a meta course  (bug 5734)
     if ($course->metacourse) {
         print_header_simple();
+        print_course($course);
         notice(get_string('coursenotaccessible'), "$CFG->wwwroot/index.php");
     }
 
