@@ -589,6 +589,14 @@ class grade_item extends grade_object {
      * @return void
      */
     function set_hidden($hidden, $cascade=false) {
+        if ($this->is_category_item()) {
+            $parent_hidden = $this->get_item_category()->get_parent_category()->is_hidden();
+        } else {
+            $parent_hidden = $this->get_parent_category()->is_hidden();
+        }
+        if ($parent_hidden && $hidden == 0 && $this->itemtype != 'course') {
+            return;
+        }
         $this->hidden = $hidden;
         $this->update();
         
