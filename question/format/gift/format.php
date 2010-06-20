@@ -333,6 +333,9 @@ class qformat_gift extends qformat_default {
     
                 //$question->defaultgrade = 1;
                 //$question->image = "";   // No images with this format
+				$question->answernumbering = '123';
+				$question->shuffleanswers = 1;
+                
                 return $question;
                 break;
 

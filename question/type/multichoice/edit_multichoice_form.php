@@ -35,7 +35,7 @@ class question_edit_multichoice_form extends question_edit_form {
             $menu[$numberingoption] = get_string('answernumbering' . $numberingoption, 'qtype_multichoice');
         }
         $mform->addElement('select', 'answernumbering', get_string('answernumbering', 'qtype_multichoice'), $menu);
-        $mform->setDefault('answernumbering', 'abc');
+        $mform->setDefault('answernumbering', '123');
 
 /*        $mform->addElement('static', 'answersinstruct', get_string('choices', 'qtype_multichoice'), get_string('fillouttwochoices', 'qtype_multichoice'));
         $mform->closeHeaderBefore('answersinstruct');
