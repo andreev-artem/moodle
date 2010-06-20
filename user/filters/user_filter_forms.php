@@ -23,8 +23,11 @@ class user_add_filter_form extends moodleform {
             }
         }
 
-        // Add button
-        $mform->addElement('submit', 'addfilter', get_string('addfilter','filters'));
+        // Add buttons
+        $objs = array();
+        $objs[] = &$mform->createElement('submit', 'addfilter', get_string('addfilter','filters'));
+        $objs[] = &$mform->createElement('submit', 'replacefilters', get_string('replacefilters','filters'));
+        $mform->addElement('group', 'addfiltergrp', '', $objs, ' ', false);
 
         // Don't use last advanced state
         $mform->setShowAdvanced(false);
