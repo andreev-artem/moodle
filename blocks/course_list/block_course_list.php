@@ -53,6 +53,7 @@ class block_course_list extends block_list {
                 if (has_capability('moodle/course:update', get_context_instance(CONTEXT_SYSTEM)) || empty($CFG->block_course_list_hideallcourseslink)) {
                     $this->content->footer = "<a href=\"$CFG->wwwroot/course/index.php\">".get_string("fulllistofcourses")."</a> ...";
                 }
+                $this->content->footer .= "<br /> <a href=\"$CFG->wwwroot/my\">".get_string('mymoodle', 'my');
             }
             $this->get_remote_courses();
             if ($this->content->items) { // make sure we don't return an empty list
@@ -103,6 +104,9 @@ class block_course_list extends block_list {
                 }
                 $this->title = get_string('courses');
             }
+        }
+        if (!empty($USER->id) && !isguest()) {
+            $this->content->footer .= "<br /> <a href=\"$CFG->wwwroot/my\">".get_string('mymoodle', 'my');
         }
 
         return $this->content;
