@@ -7,3 +7,6 @@
 [submodule "admin/report/messages"]
 	path = admin/report/messages
 	url = git@github.com:andreev-artem/admin_report_messages.git
+[submodule "blocks/course_results"]
+	path = blocks/course_results
+	url = git@github.com:andreev-artem/blocks_course_results.git
