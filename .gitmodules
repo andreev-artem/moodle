@@ -19,3 +19,6 @@
 [submodule "course/report/trashactivity"]
 	path = course/report/trashactivity
 	url = git@github.com:andreev-artem/course_report_trashactivity.git
+[submodule "mod/data/field/multimedia"]
+	path = mod/data/field/multimedia
+	url = git@github.com:andreev-artem/mod_data_field_multimedia.git
