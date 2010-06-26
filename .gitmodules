@@ -1,0 +1,3 @@
+[submodule "admin/user"]
+	path = admin/user
+	url = git@github.com:andreev-artem/bulk_user_improvements.git
