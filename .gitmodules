@@ -16,3 +16,6 @@
 [submodule "course/report/bulksettings"]
 	path = course/report/bulksettings
 	url = git@github.com:andreev-artem/course_report_bulksettings.git
+[submodule "course/report/trashactivity"]
+	path = course/report/trashactivity
+	url = git@github.com:andreev-artem/course_report_trashactivity.git
