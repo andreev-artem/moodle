@@ -10,3 +10,6 @@
 [submodule "blocks/course_results"]
 	path = blocks/course_results
 	url = git@github.com:andreev-artem/blocks_course_results.git
+[submodule "blocks/gramota"]
+	path = blocks/gramota
+	url = git@github.com:andreev-artem/blocks_gramota.git
