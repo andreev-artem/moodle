@@ -1,3 +1,6 @@
 [submodule "admin/user"]
 	path = admin/user
 	url = git@github.com:andreev-artem/bulk_user_improvements.git
+[submodule "admin/report/files"]
+	path = admin/report/files
+	url = git@github.com:andreev-artem/admin_report_files.git
