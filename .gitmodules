@@ -13,3 +13,6 @@
 [submodule "blocks/gramota"]
 	path = blocks/gramota
 	url = git@github.com:andreev-artem/blocks_gramota.git
+[submodule "course/report/bulksettings"]
+	path = course/report/bulksettings
+	url = git@github.com:andreev-artem/course_report_bulksettings.git
