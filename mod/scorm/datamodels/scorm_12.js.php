@@ -564,9 +564,11 @@ function SCORMapi1_2() {
                             if ((typeof eval('datamodel["'+elementmodel+'"].defaultvalue')) != "undefined") {
                                 if (eval('datamodel["'+elementmodel+'"].defaultvalue') != data[property] || eval('typeof(datamodel["'+elementmodel+'"].defaultvalue)') != typeof(data[property])) {
                                     datastring += elementstring;
+                                    eval('datamodel["'+elementmodel+'"].defaultvalue=data[property];');
                                 }
                             } else {
                                 datastring += elementstring;
+                                eval('datamodel["'+elementmodel+'"].defaultvalue=data[property];');
                             }
                         }
                     }
@@ -583,13 +585,11 @@ function SCORMapi1_2() {
             }
             if (cmi.core.lesson_mode == 'normal') {
                 if (cmi.core.credit == 'credit') {
-                    if (cmi.core.lesson_status == 'completed') {
-                        if (cmi.student_data.mastery_score != '' && cmi.core.score.raw != '') {
-                            if (parseFloat(cmi.core.score.raw) >= parseFloat(cmi.student_data.mastery_score)) {
-                                cmi.core.lesson_status = 'passed';
-                            } else {
-                                cmi.core.lesson_status = 'failed';
-                            }
+                    if (cmi.student_data.mastery_score != '' && cmi.core.score.raw != '') {
+                        if (parseFloat(cmi.core.score.raw) >= parseFloat(cmi.student_data.mastery_score)) {
+                            cmi.core.lesson_status = 'passed';
+                        } else {
+                            cmi.core.lesson_status = 'failed';
                         }
                     }
                 }
