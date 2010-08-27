@@ -51,7 +51,7 @@ if ($confirm && confirm_sesskey()) {
     delete_records_select('lesson_branch', "userid IN ($usersstr)");
 
     /// update central gradebook
-    $sql = "SELECT l.*, cm.idnumber as cmidnumber, l.course as courseid
+    /*$sql = "SELECT l.*, cm.idnumber as cmidnumber, l.course as courseid
             FROM {$CFG->prefix}lesson l, {$CFG->prefix}course_modules cm, {$CFG->prefix}modules m
             WHERE m.name='lesson' AND m.id=cm.module AND cm.instance=l.id";
     if ($rs = get_recordset_sql($sql)) {
@@ -61,7 +61,7 @@ if ($confirm && confirm_sesskey()) {
             }
         }
         rs_close($rs);
-    }
+    }*/
 
     // delete all assignment submissions
     // delete submission files
@@ -78,7 +78,7 @@ if ($confirm && confirm_sesskey()) {
     delete_records_select('assignment_submissions', "userid IN ($usersstr)");
 
     // update gradebook
-    $sql = "SELECT a.*, cm.idnumber as cmidnumber, a.course as courseid
+    /*$sql = "SELECT a.*, cm.idnumber as cmidnumber, a.course as courseid
             FROM {$CFG->prefix}assignment a, {$CFG->prefix}course_modules cm, {$CFG->prefix}modules m
             WHERE m.name='assignment' AND m.id=cm.module AND cm.instance=a.id";
     if ($rs = get_recordset_sql($sql)) {
@@ -91,7 +91,7 @@ if ($confirm && confirm_sesskey()) {
             }
         }
         rs_close($rs);
-    }
+    }*/
 
     // finally, delete all grade records to clean up database
     $sql = "SELECT g.id 
