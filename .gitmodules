@@ -1,30 +1,30 @@
 [submodule "admin/user"]
 	path = admin/user
-	url = git@github.com:andreev-artem/bulk_user_improvements.git
+	url = git@github.com:andreev-artem/moodle_bulk_user_improvements.git
 [submodule "admin/report/files"]
 	path = admin/report/files
-	url = git@github.com:andreev-artem/admin_report_files.git
+	url = git@github.com:andreev-artem/moodle_admin_report_files.git
 [submodule "admin/report/messages"]
 	path = admin/report/messages
-	url = git@github.com:andreev-artem/admin_report_messages.git
+	url = git@github.com:andreev-artem/moodle_admin_report_messages.git
 [submodule "blocks/course_results"]
 	path = blocks/course_results
-	url = git@github.com:andreev-artem/blocks_course_results.git
+	url = git@github.com:andreev-artem/moodle_blocks_course_results.git
 [submodule "blocks/gramota"]
 	path = blocks/gramota
-	url = git@github.com:andreev-artem/blocks_gramota.git
+	url = git@github.com:andreev-artem/moodle_blocks_gramota.git
 [submodule "course/report/bulksettings"]
 	path = course/report/bulksettings
-	url = git@github.com:andreev-artem/course_report_bulksettings.git
+	url = git@github.com:andreev-artem/moodle_course_report_bulksettings.git
 [submodule "course/report/trashactivity"]
 	path = course/report/trashactivity
-	url = git@github.com:andreev-artem/course_report_trashactivity.git
+	url = git@github.com:andreev-artem/moodle_course_report_trashactivity.git
 [submodule "mod/data/field/multimedia"]
 	path = mod/data/field/multimedia
-	url = git@github.com:andreev-artem/mod_data_field_multimedia.git
+	url = git@github.com:andreev-artem/moodle_mod_data_field_multimedia.git
 [submodule "mod/attforblock"]
 	path = mod/attforblock
-	url = git@github.com:andreev-artem/mod_attforblock.git
+	url = git@github.com:andreev-artem/moodle_mod_attforblock.git
 [submodule "blocks/attendance"]
 	path = blocks/attendance
-	url = git@github.com:andreev-artem/blocks_attendance.git
+	url = git@github.com:andreev-artem/moodle_blocks_attendance.git
