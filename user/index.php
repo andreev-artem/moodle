@@ -785,6 +785,11 @@
             $displaylist['clearcourseactivity.php'] = get_string( 'clearcourseactivity' );
         }
 
+        // adding "select for bulk actions" bulk functionality
+        if (has_capability('moodle/role:assign', $context) && $context->id != $frontpagectx->id) {
+            $displaylist['selectforbulkactions.php'] = get_string( 'selectforbulkactions' );
+        }
+
         helpbutton("participantswithselectedusers", get_string("withselectedusers"));
         choose_from_menu ($displaylist, "formaction", "", get_string("withselectedusers"), "if(checksubmit(this.form))this.form.submit();", "");
         echo '<input type="hidden" name="id" value="'.$course->id.'" />';

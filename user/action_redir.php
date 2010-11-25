@@ -16,6 +16,7 @@ $actions = array(
         'addnote.php',
         'groupaddnote.php',
         'clearcourseactivity.php',
+        'selectforbulkactions.php',
         );
 
 if (array_search($formaction, $actions) === false) {
