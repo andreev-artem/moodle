@@ -2093,7 +2093,11 @@ function require_login($courseorid=0, $autologinguest=true, $cm=null, $setwantsu
                     if (empty($USER->access['rsw'][$COURSE->context->path])) {  // Normal guest
                         echo '<br />';
                         print_course($COURSE);
-                        notice(get_string('guestsnotallowed', '', format_string($COURSE->fullname)), "$CFG->wwwroot/login/index.php");
+                            $loginurl = "$CFG->wwwroot/login/index.php";
+                            if (!empty($CFG->loginhttps)) {
+                                $loginurl = str_replace('http:','https:', $loginurl);
+                            }
+                        notice(get_string('guestsnotallowed', '', format_string($COURSE->fullname)), $loginurl);
                     } else {
                         notify(get_string('guestsnotallowed', '', format_string($COURSE->fullname)));
                         echo '<div class="notifyproblem">'.switchroles_form($COURSE->id).'</div>';
@@ -2684,7 +2688,6 @@ function ismoving($courseid) {
  * @param bool $override If true then the name will be first name followed by last name rather than adhering to fullnamedisplay setting.
  */
 function fullname($user, $override=false) {
-
     global $CFG, $SESSION;
 
     if (!isset($user->firstname) and !isset($user->lastname)) {
@@ -2704,7 +2707,7 @@ function fullname($user, $override=false) {
         $CFG->fullnamedisplay = $SESSION->fullnamedisplay;
     }
 
-    if ($CFG->fullnamedisplay == 'firstname lastname') {
+    if (!isset($CFG->fullnamedisplay) or $CFG->fullnamedisplay === 'firstname lastname') {
         return $user->firstname .' '. $user->lastname;
 
     } else if ($CFG->fullnamedisplay == 'lastname firstname') {
@@ -2980,7 +2983,7 @@ function create_user_record($username, $password, $auth='manual') {
     $newuser->mnethostid = $CFG->mnet_localhost_id;
 
     if (insert_record('user', $newuser)) {
-        $user = get_complete_user_data('username', $newuser->username);
+        $user = get_complete_user_data('username', $newuser->username, $CFG->mnet_localhost_id);
         if(!empty($CFG->{'auth_'.$newuser->auth.'_forcechangepassword'})){
             set_user_preference('auth_forcepasswordchange', 1, $user->id);
         }
@@ -2997,17 +3000,19 @@ function create_user_record($username, $password, $auth='manual') {
  * @param string $username New user's username to add to record
  * @return user A {@link $USER} object
  */
-function update_user_record($username, $authplugin) {
+function update_user_record($username, $unused) {
+    global $CFG;
+
     $username = trim(moodle_strtolower($username)); /// just in case check text case
 
-    $oldinfo = get_record('user', 'username', $username, '','','','', 'username, auth');
+    $oldinfo = get_record('user', 'username', $username, 'mnethostid', $CFG->mnet_localhost_id, '','', 'id, username, auth');
     $userauth = get_auth_plugin($oldinfo->auth);
 
     if ($newinfo = $userauth->get_userinfo($username)) {
         $newinfo = truncate_userinfo($newinfo);
         foreach ($newinfo as $key => $value){
-            if ($key === 'username') {
-                // 'username' is not a mapped updateable/lockable field, so skip it.
+            if ($key === 'username' or $key === 'id' or $key === 'auth' or $key === 'mnethostid' or $key === 'deleted') {
+                // these fields must not be changed
                 continue;
             }
             $confval = $userauth->config->{'field_updatelocal_' . $key};
@@ -3024,14 +3029,14 @@ function update_user_record($username, $authplugin) {
                 // nothing_ for this field. Thus it makes sense to let this value
                 // stand in until LDAP is giving a value for this field.
                 if (!(empty($value) && $lockval === 'unlockedifempty')) {
-                    set_field('user', $key, $value, 'username', $username)
+                    set_field('user', $key, $value, 'id', $oldinfo->id)
                         || error_log("Error updating $key for $username");
                 }
             }
         }
     }
 
-    return get_complete_user_data('username', $username);
+    return get_complete_user_data('username', $username, $CFG->mnet_localhost_id);
 }
 
 function truncate_userinfo($info) {
@@ -3057,9 +3062,10 @@ function truncate_userinfo($info) {
                     );
 
     // apply where needed
+    $textlib = textlib_get_instance();
     foreach (array_keys($info) as $key) {
         if (!empty($limit[$key])) {
-            $info[$key] = trim(substr($info[$key],0, $limit[$key]));
+            $info[$key] = trim($textlib->substr($info[$key],0, $limit[$key]));
         }
     }
 
@@ -6418,6 +6424,14 @@ function check_php_version($version='4.1.0') {
           }
           break;
 
+      case 'Chrome':
+          if (preg_match("/Chrome\/(.*)[ ]+/i", $agent, $match)) {
+              if (version_compare($match[1], $version) >= 0) {
+                  return true;
+              }
+          }
+          break;
+
       case 'Safari':  /// Safari
           // Look for AppleWebKit, excluding strings with OmniWeb, Shiira and SimbianOS
           if (strpos($agent, 'OmniWeb')) { // Reject OmniWeb
@@ -6425,6 +6439,10 @@ function check_php_version($version='4.1.0') {
           } elseif (strpos($agent, 'Shiira')) { // Reject Shiira
               return false;
           } elseif (strpos($agent, 'SimbianOS')) { // Reject SimbianOS
+              return false;
+          }
+          if (strpos($agent, 'iPhone') or strpos($agent, 'iPad') or strpos($agent, 'iPod')) {
+              // No Apple mobile devices here - editor does not work, course ajax is not touch compatible, etc.
               return false;
           }
 
@@ -6521,6 +6539,8 @@ function can_use_html_editor() {
             return 'MSIE';
         } else if (check_browser_version('Gecko', 20030516)) {
             return 'Gecko';
+        } else if (check_browser_version('Safari', 531)) {
+            return 'AppleWebKit';
         }
     }
     return false;
