@@ -25,3 +25,6 @@
 [submodule "blocks/attendance"]
 	path = blocks/attendance
 	url = git@github.com:andreev-artem/moodle_blocks_attendance.git
+[submodule "admin/report/advuserbulk"]
+	path = admin/report/advuserbulk
+	url = git@github.com:andreev-artem/moodle_admin_report_advuserbulk.git
