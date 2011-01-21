@@ -28,3 +28,9 @@
 [submodule "admin/report/advuserbulk"]
 	path = admin/report/advuserbulk
 	url = git@github.com:andreev-artem/moodle_admin_report_advuserbulk.git
+[submodule "admin/report/addenrol"]
+	path = admin/report/addenrol
+	url = git@github.com:andreev-artem/moodle_admin_report_addenrol.git
+[submodule "course/report/attprint"]
+	path = course/report/attprint
+	url = git@github.com:andreev-artem/moodle_course_report_attprint.git
