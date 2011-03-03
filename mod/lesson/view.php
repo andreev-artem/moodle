@@ -427,7 +427,19 @@
         $timer = new stdClass;
         if(!has_capability('mod/lesson:manage', $context)) {
             if (!$timer = get_records_select('lesson_timer', "lessonid = $lesson->id AND userid = $USER->id", 'starttime')) {
-                error('Error: could not find records');
+                $USER->startlesson[$lesson->id] = true;
+                $startlesson = new stdClass;
+                $startlesson->lessonid = $lesson->id;
+                $startlesson->userid = $USER->id;
+                $startlesson->starttime = time();
+                $startlesson->lessontime = time();
+
+                $id =insert_record('lesson_timer', $startlesson);
+                if (!id) {
+                    error('Error: could not insert row into lesson_timer table');
+                }
+                $timer = $startlesson;
+                $timer->id = $id;
             } else {
                 $timer = array_pop($timer); // this will get the latest start time record
             }
