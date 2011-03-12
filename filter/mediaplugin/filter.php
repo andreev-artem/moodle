@@ -211,7 +211,7 @@ function mediaplugin_filter_swf_callback($link) {
     $height = empty($link[4]) ? '300' : $link[4];
     $url = $link[1];
     $jsurl = addslashes_js($link[1]);
-    $printlink = '<a href="'.$url.'">'.get_string('flashvideo', 'mediaplugin').'</a>';
+    $printlink = '';
 
     return $printlink.
 '<span class="mediaplugin mediaplugin_swf" id="'.$id.'">('.get_string('flashanimation', 'mediaplugin').')</span>
@@ -235,7 +235,7 @@ function mediaplugin_filter_flv_callback($link) {
     $height = empty($link[4]) ? '360' : $link[4];
     $url = $link[1];
     $jsurl = addslashes_js($link[1]);
-    $printlink = '<a href="'.$url.'">'.get_string('flashvideo', 'mediaplugin').'</a>';
+    $printlink = '';
 
     return $printlink.
 '<span class="mediaplugin mediaplugin_flv" id="'.$id.'">('.get_string('flashvideo', 'mediaplugin').')</span>
