@@ -1,0 +1,6 @@
+[submodule "admin/report/advuserbulk"]
+	path = admin/report/advuserbulk
+	url = git@github.com:andreev-artem/moodle_admin_report_advuserbulk.git
+[submodule "mod/attforblock"]
+	path = mod/attforblock
+	url = git@github.com:andreev-artem/moodle_mod_attforblock.git
