@@ -4,3 +4,6 @@
 [submodule "mod/attforblock"]
 	path = mod/attforblock
 	url = git@github.com:andreev-artem/moodle_mod_attforblock.git
+[submodule "blocks/attendance"]
+	path = blocks/attendance
+	url = git@github.com:andreev-artem/moodle_blocks_attendance.git
