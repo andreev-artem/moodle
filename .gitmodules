@@ -7,3 +7,9 @@
 [submodule "blocks/attendance"]
 	path = blocks/attendance
 	url = git@github.com:andreev-artem/moodle_blocks_attendance.git
+[submodule "question/type/order"]
+	path = question/type/order
+	url = git@github.com:andreev-artem/moodle_question_type_order.git
+[submodule "question/type/ddmatch"]
+	path = question/type/ddmatch
+	url = git@github.com:andreev-artem/moodle_question_type_ddmatch.git
