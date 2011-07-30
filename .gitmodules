@@ -13,3 +13,6 @@
 [submodule "question/type/ddmatch"]
 	path = question/type/ddmatch
 	url = git@github.com:andreev-artem/moodle_question_type_ddmatch.git
+[submodule "question/type/flash"]
+	path = question/type/flash
+	url = git@github.com:andreev-artem/moodle_question_type_flash.git
