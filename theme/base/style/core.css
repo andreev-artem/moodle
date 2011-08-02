@@ -3,6 +3,9 @@
  */
 input[type=text],input[type=password],textarea{width:auto;}
 
+/* Fix for YUI overriding styles */
+strong{font-style:inherit;}em{font-weight:inherit;}
+
 /**
  * General
  */
@@ -25,8 +28,12 @@ a.dimmed,
 a.dimmed:link,
 a.dimmed:visited,
 a.dimmed_text,
+a.dimmed_text:link,
+a.dimmed_text:visited,
 .dimmed_text,
 .dimmed_text a,
+.dimmed_text a:link,
+.dimmed_text a:visited,
 .dimmed_category,
 .dimmed_category a {color:#AAAAAA;}
 
@@ -187,12 +194,13 @@ a.skip:active {position: static;display: block;}
 .mform fieldset div div {margin:0;}
 .mform fieldset .advancedbutton {text-align:right;}
 .mform fieldset.hidden {border-width:0;}
+.mform fieldset.group {margin-bottom: 0}
 .mform fieldset.error {border: 1px solid #A00;}
 .mform .fitem {width:100%;overflow:hidden;margin-top:5px;margin-bottom:1px;clear:right;}
 .mform .fitem .fitemtitle {width:15%;text-align:right;float:left;}
 .mform .fitem .fitemtitle div {display: inline;}
 .mform .fitem .felement {border-width: 0;width:80%;margin-left:16%;}
-.mform .fitem fieldset.felement {margin-left:0;padding-left:1%;}
+.mform .fitem fieldset.felement {margin-left:0;padding-left:1%;margin-bottom:0}
 .mform .error,
 .mform .required {color:#A00;}
 .mform .required .fgroup span label {color:#000;}
@@ -762,15 +770,23 @@ sup {vertical-align: super;}
 
 /** Fix TinyMCE editor right to left **/
 .dir-rtl .clearlooks2.ie9 .mceAlert .mceMiddle span,.dir-rtl .clearlooks2 .mceConfirm .mceMiddle span {top: 44px;}
-.dir-rtl .o2k7Skin table, 
-.dir-rtl .o2k7Skin tbody, 
-.dir-rtl .o2k7Skin a, 
-.dir-rtl .o2k7Skin img, 
-.dir-rtl .o2k7Skin tr, 
-.dir-rtl .o2k7Skin div, 
-.dir-rtl .o2k7Skin td, 
-.dir-rtl .o2k7Skin iframe, 
-.dir-rtl .o2k7Skin span, 
-.dir-rtl .o2k7Skin *, 
+.dir-rtl .o2k7Skin table,
+.dir-rtl .o2k7Skin tbody,
+.dir-rtl .o2k7Skin a,
+.dir-rtl .o2k7Skin img,
+.dir-rtl .o2k7Skin tr,
+.dir-rtl .o2k7Skin div,
+.dir-rtl .o2k7Skin td,
+.dir-rtl .o2k7Skin iframe,
+.dir-rtl .o2k7Skin span,
+.dir-rtl .o2k7Skin *,
 .dir-rtl .o2k7Skin .mceText,
 .dir-rtl .o2k7Skin .mceListBox .mceText {text-align:right;}
+
+/* Fix for ordered and unordered list in course topic summary & course weekly summary */
+ul li,
+.course-content ul.weeks .content .summary ul li,
+.course-content ul.topics .content .summary ul li {list-style: disc outside none;}
+ol li,
+.course-content ul.weeks .content .summary ol li,
+.course-content ul.topics .content .summary ol li {list-style: decimal outside none;}

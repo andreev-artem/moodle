@@ -248,7 +248,7 @@ function qualified_me() {
  *     - output the url without any get params
  *     - and output the params as hidden fields to be output within a form
  *
- * @link http://docs.moodle.org/en/Development:lib/weblib.php_moodle_url See short write up here
+ * @link http://docs.moodle.org/dev/lib/weblib.php_moodle_url See short write up here
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @package moodlecore
  */
@@ -2806,23 +2806,6 @@ function convert_tabrows_to_tree($tabrows, $selected, $inactive, $activated) {
 
     return $subtree;
 }
-
-/**
- * Returns the Moodle Docs URL in the users language
- *
- * @global object
- * @param string $path the end of the URL.
- * @return string The MoodleDocs URL in the user's language. for example {@link http://docs.moodle.org/en/ http://docs.moodle.org/en/$path}
- */
-function get_docs_url($path) {
-    global $CFG;
-    if (!empty($CFG->docroot)) {
-        return $CFG->docroot . '/' . current_language() . '/' . $path;
-    } else {
-        return 'http://docs.moodle.org/en/'.$path;
-    }
-}
-
 
 /**
  * Standard Debugging Function
