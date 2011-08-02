@@ -57,6 +57,9 @@
         if (! $forum = $DB->get_record("forum", array("id" => $cm->instance))) {
             print_error('invalidforumid', 'forum');
         }
+        if ($forum->type == 'single') {
+            $PAGE->set_pagetype('mod-forum-discuss');
+        }
         // move require_course_login here to use forced language for course
         // fix for MDL-6926
         require_course_login($course, true, $cm);
@@ -102,10 +105,6 @@
     $completion->set_module_viewed($cm);
 
 /// Print header.
-    /// Add ajax-related libs for ratings if required  MDL-20119
-    $PAGE->requires->yui2_lib('event');
-    $PAGE->requires->yui2_lib('connection');
-    $PAGE->requires->yui2_lib('json');
 
     $PAGE->set_title(format_string($forum->name));
     $PAGE->add_body_class('forumtype-'.$forum->type);

@@ -5,6 +5,7 @@
  */
 
 if ($hassiteconfig) {
+    $ADMIN->add('modules', new admin_page_pluginsoverview());
     $ADMIN->add('modules', new admin_category('modsettings', get_string('activitymodules')));
     $ADMIN->add('modsettings', new admin_page_managemods());
     $modules = $DB->get_records('modules', array(), "name ASC");
@@ -45,6 +46,27 @@ if ($hassiteconfig) {
         }
     }
 
+    // message outputs
+    $ADMIN->add('modules', new admin_category('messageoutputs', get_string('messageoutputs', 'message')));
+    $ADMIN->add('messageoutputs', new admin_page_managemessageoutputs());
+    $ADMIN->add('messageoutputs', new admin_page_defaultmessageoutputs());
+    require_once($CFG->dirroot.'/message/lib.php');
+    $processors = get_message_processors();
+    foreach ($processors as $processor) {
+        $processorname = $processor->name;
+        if (!$processor->available) {
+            continue;
+        }
+        if ($processor->hassettings) {
+            $strprocessorname = get_string('pluginname', 'message_'.$processorname);
+            $settings = new admin_settingpage('messagesetting'.$processorname, $strprocessorname, 'moodle/site:config', !$processor->enabled);
+            include($CFG->dirroot.'/message/output/'.$processor->name.'/settings.php');
+            if ($settings) {
+                $ADMIN->add('messageoutputs', $settings);
+            }
+        }
+    }
+
     // authentication plugins
     $ADMIN->add('modules', new admin_category('authsettings', get_string('authentication', 'admin')));
 
@@ -52,6 +74,7 @@ if ($hassiteconfig) {
     $temp->add(new admin_setting_manageauths());
     $temp->add(new admin_setting_heading('manageauthscommonheading', get_string('commonsettings', 'admin'), ''));
     $temp->add(new admin_setting_special_registerauth());
+    $temp->add(new admin_setting_configcheckbox('loginpageautofocus', get_string('loginpageautofocus', 'admin'), get_string('loginpageautofocus_help', 'admin'), 0));
     $temp->add(new admin_setting_configselect('guestloginbutton', get_string('guestloginbutton', 'auth'),
                                               get_string('showguestlogin', 'auth'), '1', array('0'=>get_string('hide'), '1'=>get_string('show'))));
     $temp->add(new admin_setting_configtext('alternateloginurl', get_string('alternateloginurl', 'auth'),
@@ -323,6 +346,9 @@ if ($hassiteconfig) {
     $ADMIN->add('webservicesettings', $temp);
     /// manage service
     $temp = new admin_settingpage('externalservices', get_string('externalservices', 'webservice'));
+    $enablemobiledocurl = new moodle_url(get_docs_url('Enable_mobile_web_services'));
+    $enablemobiledoclink = html_writer::link($enablemobiledocurl, get_string('documentation'));
+    $temp->add(new admin_setting_enablemobileservice('enablemobilewebservice', get_string('enablemobilewebservice', 'admin'), get_string('configenablemobilewebservice', 'admin', $enablemobiledoclink), 0));
     $temp->add(new admin_setting_heading('manageserviceshelpexplaination', get_string('information', 'webservice'), get_string('servicehelpexplanation', 'webservice')));
     $temp->add(new admin_setting_manageexternalservices());
     $ADMIN->add('webservicesettings', $temp);
@@ -369,6 +395,10 @@ if ($hassiteconfig) {
 
 // Question type settings
 if ($hassiteconfig || has_capability('moodle/question:config', $systemcontext)) {
+    // Question behaviour settings.
+    $ADMIN->add('modules', new admin_category('qbehavioursettings', get_string('questionbehaviours', 'admin')));
+    $ADMIN->add('qbehavioursettings', new admin_page_manageqbehaviours());
+
     // Question type settings.
     $ADMIN->add('modules', new admin_category('qtypesettings', get_string('questiontypes', 'admin')));
     $ADMIN->add('qtypesettings', new admin_page_manageqtypes());

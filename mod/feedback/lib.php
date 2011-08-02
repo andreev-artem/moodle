@@ -467,6 +467,7 @@ function feedback_cron () {
 }
 
 /**
+ * @todo: deprecated - to be deleted in 2.2
  * @return bool false
  */
 function feedback_get_participants($feedbackid) {
@@ -2793,4 +2794,15 @@ function feedback_init_feedback_session() {
             $SESSION->feedback = new stdClass();
         }
     }
+}
+
+/**
+ * Return a list of page types
+ * @param string $pagetype current page type
+ * @param stdClass $parentcontext Block's parent context
+ * @param stdClass $currentcontext Current context of block
+ */
+function feedback_page_type_list($pagetype, $parentcontext, $currentcontext) {
+    $module_pagetype = array('mod-feedback-*'=>get_string('page-mod-feedback-x', 'feedback'));
+    return $module_pagetype;
 }

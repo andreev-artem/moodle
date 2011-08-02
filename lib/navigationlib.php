@@ -117,7 +117,7 @@ class navigation_node implements renderable {
     public $mainnavonly = false;
     /** @var bool If set to true a title will be added to the action no matter what */
     public $forcetitle = false;
-    /** @var navigation_node A reference to the node parent */
+    /** @var navigation_node A reference to the node parent, you should never set this directly you should always call set_parent */
     public $parent = null;
     /** @var bool Override to not display the icon even if one is provided **/
     public $hideicon = false;
@@ -169,9 +169,6 @@ class navigation_node implements renderable {
             if (array_key_exists('key', $properties)) {
                 $this->key = $properties['key'];
             }
-            if (array_key_exists('parent', $properties)) {
-                $this->parent = $properties['parent'];
-            }
             // This needs to happen last because of the check_if_active call that occurs
             if (array_key_exists('action', $properties)) {
                 $this->action = $properties['action'];
@@ -181,6 +178,9 @@ class navigation_node implements renderable {
                 if (self::$autofindactive) {
                     $this->check_if_active();
                 }
+            }
+            if (array_key_exists('parent', $properties)) {
+                $this->set_parent($properties['parent']);
             }
         } else if (is_string($properties)) {
             $this->text = $properties;
@@ -237,8 +237,8 @@ class navigation_node implements renderable {
     }
 
     /**
-     * Adds a navigation node as a child of this node.
-     *
+     * Creates a navigation node, ready to add it as a child using add_node
+     * function. (The created node needs to be added before you can use it.)
      * @param string $text
      * @param moodle_url|action_link $action
      * @param int $type
@@ -247,11 +247,8 @@ class navigation_node implements renderable {
      * @param pix_icon $icon
      * @return navigation_node
      */
-    public function add($text, $action=null, $type=self::TYPE_CUSTOM, $shorttext=null, $key=null, pix_icon $icon=null) {
-        // First convert the nodetype for this node to a branch as it will now have children
-        if ($this->nodetype !== self::NODETYPE_BRANCH) {
-            $this->nodetype = self::NODETYPE_BRANCH;
-        }
+    public static function create($text, $action=null, $type=self::TYPE_CUSTOM,
+            $shorttext=null, $key=null, pix_icon $icon=null) {
         // Properties array used when creating the new navigation node
         $itemarray = array(
             'text' => $text,
@@ -269,18 +266,58 @@ class navigation_node implements renderable {
         if ($icon!==null) {
             $itemarray['icon'] = $icon;
         }
-        // Default the key to the number of children if not provided
-        if ($key === null) {
-            $key = $this->children->count();
-        }
         // Set the key
         $itemarray['key'] = $key;
+        // Construct and return
+        return new navigation_node($itemarray);
+    }
+
+    /**
+     * Adds a navigation node as a child of this node.
+     *
+     * @param string $text
+     * @param moodle_url|action_link $action
+     * @param int $type
+     * @param string $shorttext
+     * @param string|int $key
+     * @param pix_icon $icon
+     * @return navigation_node
+     */
+    public function add($text, $action=null, $type=self::TYPE_CUSTOM, $shorttext=null, $key=null, pix_icon $icon=null) {
+        // Create child node
+        $childnode = self::create($text, $action, $type, $shorttext, $key, $icon);
+
+        // Add the child to end and return
+        return $this->add_node($childnode);
+    }
+
+    /**
+     * Adds a navigation node as a child of this one, given a $node object
+     * created using the create function.
+     * @param navigation_node $childnode Node to add
+     * @param int|string $key The key of a node to add this before. If not
+     *   specified, adds at end of list
+     * @return navigation_node The added node
+     */
+    public function add_node(navigation_node $childnode, $beforekey=null) {
+        // First convert the nodetype for this node to a branch as it will now have children
+        if ($this->nodetype !== self::NODETYPE_BRANCH) {
+            $this->nodetype = self::NODETYPE_BRANCH;
+        }
         // Set the parent to this node
-        $itemarray['parent'] = $this;
+        $childnode->set_parent($this);
+
+        // Default the key to the number of children if not provided
+        if ($childnode->key === null) {
+            $childnode->key = $this->children->count();
+        }
+
         // Add the child using the navigation_node_collections add method
-        $node = $this->children->add(new navigation_node($itemarray));
-        // If the node is a category node or the user is logged in and its a course
-        // then mark this node as a branch (makes it expandable by AJAX)
+        $node = $this->children->add($childnode, $beforekey);
+
+        // If added node is a category node or the user is logged in and it's a course
+        // then mark added node as a branch (makes it expandable by AJAX)
+        $type = $childnode->type;
         if (($type==self::TYPE_CATEGORY) || (isloggedin() && $type==self::TYPE_COURSE)) {
             $node->nodetype = self::NODETYPE_BRANCH;
         }
@@ -288,8 +325,16 @@ class navigation_node implements renderable {
         if ($this->hidden) {
             $node->hidden = true;
         }
-        // Return the node (reference returned by $this->children->add()
+        // Return added node (reference returned by $this->children->add()
         return $node;
+    }
+
+    /**
+     * Return a list of all the keys of all the child nodes.
+     * @return array the keys.
+     */
+    public function get_children_key_list() {
+        return $this->children->get_key_list();
     }
 
     /**
@@ -603,6 +648,24 @@ class navigation_node implements renderable {
         }
         return array(array($tabs, $rows), $selected, $inactive, $activated, $return);
     }
+
+    /**
+     * Sets the parent for this node and if this node is active ensures that the tree is properly
+     * adjusted as well.
+     *
+     * @param navigation_node $parent
+     */
+    public function set_parent(navigation_node $parent) {
+        // Set the parent (thats the easy part)
+        $this->parent = $parent;
+        // Check if this node is active (this is checked during construction)
+        if ($this->isactive) {
+            // Force all of the parent nodes open so you can see this node
+            $this->parent->force_open();
+            // Make all parents inactive so that its clear where we are.
+            $this->parent->make_inactive();
+        }
+    }
 }
 
 /**
@@ -644,16 +707,20 @@ class navigation_node_collection implements IteratorAggregate {
      * @var int
      */
     protected $count = 0;
+
     /**
      * Adds a navigation node to the collection
      *
-     * @param navigation_node $node
-     * @return navigation_node
+     * @param navigation_node $node Node to add
+     * @param string $beforekey If specified, adds before a node with this key,
+     *   otherwise adds at end
+     * @return navigation_node Added node
      */
-    public function add(navigation_node $node) {
+    public function add(navigation_node $node, $beforekey=null) {
         global $CFG;
         $key = $node->key;
         $type = $node->type;
+
         // First check we have a 2nd dimension for this type
         if (!array_key_exists($type, $this->orderedcollection)) {
             $this->orderedcollection[$type] = array();
@@ -662,15 +729,58 @@ class navigation_node_collection implements IteratorAggregate {
         if ($CFG->debug && array_key_exists($key, $this->orderedcollection[$type])) {
             debugging('Navigation node intersect: Adding a node that already exists '.$key, DEBUG_DEVELOPER);
         }
-        // Add the node to the appropriate place in the ordered structure.
+
+        // Find the key to add before
+        $newindex = $this->count;
+        $last = true;
+        if ($beforekey !== null) {
+            foreach ($this->collection as $index => $othernode) {
+                if ($othernode->key === $beforekey) {
+                    $newindex = $index;
+                    $last = false;
+                    break;
+                }
+            }
+            if ($newindex === $this->count) {
+                debugging('Navigation node add_before: Reference node not found ' . $beforekey .
+                        ', options: ' . implode(' ', $this->get_key_list()), DEBUG_DEVELOPER);
+            }
+        }
+
+        // Add the node to the appropriate place in the by-type structure (which
+        // is not ordered, despite the variable name)
         $this->orderedcollection[$type][$key] = $node;
+        if (!$last) {
+            // Update existing references in the ordered collection (which is the
+            // one that isn't called 'ordered') to shuffle them along if required
+            for ($oldindex = $this->count; $oldindex > $newindex; $oldindex--) {
+                $this->collection[$oldindex] = $this->collection[$oldindex - 1];
+            }
+        }
         // Add a reference to the node to the progressive collection.
-        $this->collection[$this->count] = &$this->orderedcollection[$type][$key];
+        $this->collection[$newindex] = &$this->orderedcollection[$type][$key];
         // Update the last property to a reference to this new node.
         $this->last = &$this->orderedcollection[$type][$key];
+
+        // Reorder the array by index if needed
+        if (!$last) {
+            ksort($this->collection);
+        }
         $this->count++;
         // Return the reference to the now added node
-        return $this->last;
+        return $node;
+    }
+
+    /**
+     * Return a list of all the keys of all the nodes.
+     * @return array the keys.
+     */
+    public function get_key_list() {
+        $keys = array();
+        foreach ($this->collection as $node) {
+            $keys[] = $node->key;
+        }
+        return $keys;
     }
 
     /**
@@ -696,6 +806,7 @@ class navigation_node_collection implements IteratorAggregate {
         }
         return false;
     }
+
     /**
      * Searches for a node with matching key and type.
      *
@@ -738,6 +849,7 @@ class navigation_node_collection implements IteratorAggregate {
     public function last() {
         return $this->last;
     }
+
     /**
      * Fetches all nodes of a given type from this collection
      */
@@ -883,7 +995,7 @@ class global_navigation extends navigation_node {
      * is an issue explaining why this is a REALLY UGLY HACK thats not
      * for you to use!
      *
-     * @param int $userid userid of profile page that parent wants to navigate around. 
+     * @param int $userid userid of profile page that parent wants to navigate around.
      */
     public function set_userid_for_parent_checks($userid) {
         $this->useridtouseforparentchecks = $userid;
@@ -1362,7 +1474,7 @@ class global_navigation extends navigation_node {
                         } else {
                             // We should never ever arrive here - if we have then there is a bigger
                             // problem at hand.
-                            throw coding_exception('Category path order is incorrect and/or there are missing categories');
+                            throw new coding_exception('Category path order is incorrect and/or there are missing categories');
                         }
                     }
                 }
@@ -2172,6 +2284,9 @@ class global_navigation extends navigation_node {
             $coursenode->add(get_string('tags', 'tag'), new moodle_url('/tag/search.php'));
         }
 
+        // Calendar
+        $calendarurl = new moodle_url('/calendar/view.php', array('view' => 'month'));
+        $coursenode->add(get_string('calendar', 'calendar'), $calendarurl, self::TYPE_CUSTOM, null, 'calendar');
 
         // View course reports
         if (has_capability('moodle/site:viewreports', $this->page->context)) { // basic capability for listing of reports
@@ -3241,46 +3356,46 @@ class settings_navigation extends navigation_node {
         // Settings for the module
         if (has_capability('moodle/course:manageactivities', $this->page->cm->context)) {
             $url = new moodle_url('/course/modedit.php', array('update' => $this->page->cm->id, 'return' => true, 'sesskey' => sesskey()));
-            $modulenode->add(get_string('editsettings'), $url, navigation_node::TYPE_SETTING);
+            $modulenode->add(get_string('editsettings'), $url, navigation_node::TYPE_SETTING, null, 'modedit');
         }
         // Assign local roles
         if (count(get_assignable_roles($this->page->cm->context))>0) {
             $url = new moodle_url('/'.$CFG->admin.'/roles/assign.php', array('contextid'=>$this->page->cm->context->id));
-            $modulenode->add(get_string('localroles', 'role'), $url, self::TYPE_SETTING);
+            $modulenode->add(get_string('localroles', 'role'), $url, self::TYPE_SETTING, null, 'roleassign');
         }
         // Override roles
         if (has_capability('moodle/role:review', $this->page->cm->context) or count(get_overridable_roles($this->page->cm->context))>0) {
             $url = new moodle_url('/'.$CFG->admin.'/roles/permissions.php', array('contextid'=>$this->page->cm->context->id));
-            $modulenode->add(get_string('permissions', 'role'), $url, self::TYPE_SETTING);
+            $modulenode->add(get_string('permissions', 'role'), $url, self::TYPE_SETTING, null, 'roleoverride');
         }
         // Check role permissions
         if (has_any_capability(array('moodle/role:assign', 'moodle/role:safeoverride','moodle/role:override', 'moodle/role:assign'), $this->page->cm->context)) {
             $url = new moodle_url('/'.$CFG->admin.'/roles/check.php', array('contextid'=>$this->page->cm->context->id));
-            $modulenode->add(get_string('checkpermissions', 'role'), $url, self::TYPE_SETTING);
+            $modulenode->add(get_string('checkpermissions', 'role'), $url, self::TYPE_SETTING, null, 'rolecheck');
         }
         // Manage filters
         if (has_capability('moodle/filter:manage', $this->page->cm->context) && count(filter_get_available_in_context($this->page->cm->context))>0) {
             $url = new moodle_url('/filter/manage.php', array('contextid'=>$this->page->cm->context->id));
-            $modulenode->add(get_string('filters', 'admin'), $url, self::TYPE_SETTING);
+            $modulenode->add(get_string('filters', 'admin'), $url, self::TYPE_SETTING, null, 'filtermanage');
         }
 
         if (has_capability('coursereport/log:view', get_context_instance(CONTEXT_COURSE, $this->page->cm->course))) {
             $url = new moodle_url('/course/report/log/index.php', array('chooselog'=>'1','id'=>$this->page->cm->course,'modid'=>$this->page->cm->id));
-            $modulenode->add(get_string('logs'), $url, self::TYPE_SETTING);
+            $modulenode->add(get_string('logs'), $url, self::TYPE_SETTING, null, 'logreport');
         }
 
         // Add a backup link
         $featuresfunc = $this->page->activityname.'_supports';
         if (function_exists($featuresfunc) && $featuresfunc(FEATURE_BACKUP_MOODLE2) && has_capability('moodle/backup:backupactivity', $this->page->cm->context)) {
             $url = new moodle_url('/backup/backup.php', array('id'=>$this->page->cm->course, 'cm'=>$this->page->cm->id));
-            $modulenode->add(get_string('backup'), $url, self::TYPE_SETTING);
+            $modulenode->add(get_string('backup'), $url, self::TYPE_SETTING, null, 'backup');
         }
 
         // Restore this activity
         $featuresfunc = $this->page->activityname.'_supports';
         if (function_exists($featuresfunc) && $featuresfunc(FEATURE_BACKUP_MOODLE2) && has_capability('moodle/restore:restoreactivity', $this->page->cm->context)) {
             $url = new moodle_url('/backup/restorefile.php', array('contextid'=>$this->page->cm->context->id));
-            $modulenode->add(get_string('restore'), $url, self::TYPE_SETTING);
+            $modulenode->add(get_string('restore'), $url, self::TYPE_SETTING, null, 'restore');
         }
 
         $function = $this->page->activityname.'_extend_settings_navigation';
@@ -3573,8 +3688,7 @@ class settings_navigation extends navigation_node {
         // Messaging
         if (($currentuser && has_capability('moodle/user:editownmessageprofile', $systemcontext)) || (!isguestuser($user) && has_capability('moodle/user:editmessageprofile', $usercontext) && !is_primary_admin($user->id))) {
             $url = new moodle_url('/message/edit.php', array('id'=>$user->id, 'course'=>$course->id));
-            // Hide the node if messaging disabled
-            $usersetting->add(get_string('editmymessage', 'message'), $url, self::TYPE_SETTING)->display = !empty($CFG->messaging);
+            $usersetting->add(get_string('editmymessage', 'message'), $url, self::TYPE_SETTING);
         }
 
         // Blogs

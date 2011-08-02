@@ -247,6 +247,86 @@ class dml_test extends UnitTestCase {
         $params2 = array_keys($params2);
         $common = array_intersect($params1, $params2);
         $this->assertEqual(count($common), 0);
+
+        // Some incorrect tests
+
+        // Incorrect usage passing not-allowed params type
+        $in_values = array(1, 2, 3);
+        try {
+            list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_DOLLAR, 'param', false);
+            $this->fail('An Exception is missing, expected due to not supported SQL_PARAMS_DOLLAR');
+        } catch (exception $e) {
+            $this->assertTrue($e instanceof dml_exception);
+            $this->assertEqual($e->errorcode, 'typenotimplement');
+        }
+
+        // Incorrect usage passing empty array
+        $in_values = array();
+        try {
+            list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_NAMED, 'param', false);
+            $this->fail('An Exception is missing, expected due to empty array of items');
+        } catch (exception $e) {
+            $this->assertTrue($e instanceof coding_exception);
+        }
+
+        // Test using $onemptyitems
+
+        // Correct usage passing empty array and $onemptyitems = NULL (equal = true, QM)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_QM, 'param', true, NULL);
+        $this->assertEqual(' IS NULL', $usql);
+        $this->assertIdentical(array(), $params);
+
+        // Correct usage passing empty array and $onemptyitems = NULL (equal = false, NAMED)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_NAMED, 'param', false, NULL);
+        $this->assertEqual(' IS NOT NULL', $usql);
+        $this->assertIdentical(array(), $params);
+
+        // Correct usage passing empty array and $onemptyitems = true (equal = true, QM)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_QM, 'param', true, true);
+        $this->assertEqual('= ?', $usql);
+        $this->assertIdentical(array(true), $params);
+
+        // Correct usage passing empty array and $onemptyitems = true (equal = false, NAMED)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_NAMED, 'param', false, true);
+        $this->assertEqual(1, count($params));
+        $value = reset($params);
+        $key = key($params);
+        $this->assertEqual('<> :'.$key, $usql);
+        $this->assertIdentical($value, true);
+
+        // Correct usage passing empty array and $onemptyitems = -1 (equal = true, QM)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_QM, 'param', true, -1);
+        $this->assertEqual('= ?', $usql);
+        $this->assertIdentical(array(-1), $params);
+
+        // Correct usage passing empty array and $onemptyitems = -1 (equal = false, NAMED)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_NAMED, 'param', false, -1);
+        $this->assertEqual(1, count($params));
+        $value = reset($params);
+        $key = key($params);
+        $this->assertEqual('<> :'.$key, $usql);
+        $this->assertIdentical($value, -1);
+
+        // Correct usage passing empty array and $onemptyitems = 'onevalue' (equal = true, QM)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_QM, 'param', true, 'onevalue');
+        $this->assertEqual('= ?', $usql);
+        $this->assertIdentical(array('onevalue'), $params);
+
+        // Correct usage passing empty array and $onemptyitems = 'onevalue' (equal = false, NAMED)
+        $in_values = array();
+        list($usql, $params) = $DB->get_in_or_equal($in_values, SQL_PARAMS_NAMED, 'param', false, 'onevalue');
+        $this->assertEqual(1, count($params));
+        $value = reset($params);
+        $key = key($params);
+        $this->assertEqual('<> :'.$key, $usql);
+        $this->assertIdentical($value, 'onevalue');
     }
 
     public function test_fix_table_names() {

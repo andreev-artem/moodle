@@ -3173,6 +3173,10 @@ function make_editing_buttons($mod, $absolute=false, $moveselect=true, $indent=-
            '&amp;sesskey='.$sesskey.$section.'"><img'.
            ' src="'.$OUTPUT->pix_url('t/edit') . '" class="iconsmall" '.
            ' alt="'.$str->update.'" /></a>'."\n".
+           '<a class="editing_duplicate" title="'.$str->duplicate.'" href="'.$path.'/mod.php?duplicate='.$mod->id.
+           '&amp;sesskey='.$sesskey.$section.'"><img'.
+           ' src="'.$OUTPUT->pix_url('t/copy') . '" class="iconsmall" '.
+           ' alt="'.$str->duplicate.'" /></a>'."\n".
            '<a class="editing_delete" title="'.$str->delete.'" href="'.$path.'/mod.php?delete='.$mod->id.
            '&amp;sesskey='.$sesskey.$section.'"><img'.
            ' src="'.$OUTPUT->pix_url('t/delete') . '" class="iconsmall" '.
@@ -4207,5 +4211,24 @@ class course_request {
         $eventdata->smallmessage      = '';
         $eventdata->notification      = 1;
         message_send($eventdata);
+    }
+}
+
+/**
+ * Return a list of page types
+ * @param string $pagetype current page type
+ * @param stdClass $parentcontext Block's parent context
+ * @param stdClass $currentcontext Current context of block
+ */
+function course_page_type_list($pagetype, $parentcontext, $currentcontext) {
+    // if above course context ,display all course fomats
+    list($currentcontext, $course, $cm) = get_context_info_array($currentcontext->id);
+    if ($course->id == SITEID) {
+        return array('*'=>get_string('page-x', 'pagetype'));
+    } else {
+        return array('*'=>get_string('page-x', 'pagetype'),
+            'course-*'=>get_string('page-course-x', 'pagetype'),
+            'course-view-*'=>get_string('page-course-view-x', 'pagetype')
+        );
     }
 }

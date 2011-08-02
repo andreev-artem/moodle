@@ -382,6 +382,8 @@ function wiki_grades($wikiid) {
  * in the instance, independient of his role (student, teacher, admin...)
  * See other modules as example.
  *
+ * @todo: deprecated - to be deleted in 2.2
+ *
  * @param int $wikiid ID of an instance of this module
  * @return mixed boolean/array of students
  **/
@@ -655,4 +657,21 @@ function wiki_comment_validate($comment_param) {
         }
     }
     return true;
+}
+
+/**
+ * Return a list of page types
+ * @param string $pagetype current page type
+ * @param stdClass $parentcontext Block's parent context
+ * @param stdClass $currentcontext Current context of block
+ */
+function wiki_page_type_list($pagetype, $parentcontext, $currentcontext) {
+    $module_pagetype = array(
+        'mod-wiki-*'=>get_string('page-mod-wiki-x', 'wiki'),
+        'mod-wiki-view'=>get_string('page-mod-wiki-view', 'wiki'),
+        'mod-wiki-comments'=>get_string('page-mod-wiki-comments', 'wiki'),
+        'mod-wiki-history'=>get_string('page-mod-wiki-history', 'wiki'),
+        'mod-wiki-map'=>get_string('page-mod-wiki-map', 'wiki')
+    );
+    return $module_pagetype;
 }

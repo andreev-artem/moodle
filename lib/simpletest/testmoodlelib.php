@@ -447,9 +447,9 @@ class moodlelib_test extends UnitTestCase {
     function test_clean_param_timezone() {
         // Test timezone validation
         $testvalues = array (
-            'America/Jamaica' => 'America/Jamaica',
-            'America/Argentina/Cordoba' => 'America/Argentina/Cordoba',
-            'America/Port-au-Prince' => 'America/Port-au-Prince',
+            'America/Jamaica'                => 'America/Jamaica',
+            'America/Argentina/Cordoba'      => 'America/Argentina/Cordoba',
+            'America/Port-au-Prince'         => 'America/Port-au-Prince',
             'America/Argentina/Buenos_Aires' => 'America/Argentina/Buenos_Aires',
             'PST8PDT'                        => 'PST8PDT',
             'Wrong.Value'                    => '',
@@ -597,7 +597,7 @@ class moodlelib_test extends UnitTestCase {
         if (!is_null($cfgforcetimezone)) {
             $CFG->forcetimezone = $cfgforcetimezone;
         }
-        
+
         setlocale(LC_TIME, $oldlocale);
     }
 

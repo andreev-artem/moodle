@@ -52,6 +52,10 @@ echo $OUTPUT->doctype() ?>
             <?php } ?>
 
     </div>
+    
+	<?php if ($hascustommenu) { ?>
+ 	<div id="custommenu"><?php echo $custommenu; ?></div>
+	<?php } ?>
 
     <?php if ($hascustommenu) { ?>
      <div id="custommenu"><?php echo $custommenu; ?></div>

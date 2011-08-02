@@ -668,10 +668,11 @@ if ($showactivity) {
                 //data_print_template() only adds ratings for singletemplate which is why we're attaching them here
                 //attach ratings to data records
                 require_once($CFG->dirroot.'/rating/lib.php');
-                if ($data->assessed!=RATING_AGGREGATE_NONE) {
-                    $ratingoptions = new stdclass();
+                if ($data->assessed != RATING_AGGREGATE_NONE) {
+                    $ratingoptions = new stdClass;
                     $ratingoptions->context = $context;
                     $ratingoptions->component = 'mod_data';
+                    $ratingoptions->ratingarea = 'entry';
                     $ratingoptions->items = $records;
                     $ratingoptions->aggregate = $data->assessed;//the aggregation method
                     $ratingoptions->scaleid = $data->scale;
@@ -719,7 +720,7 @@ if ($showactivity) {
         $records = array();
     }
 
-    if ($mode == '' && $CFG->enableportfolios) {
+    if ($mode == '' && !empty($CFG->enableportfolios)) {
         require_once($CFG->libdir . '/portfoliolib.php');
         $button = new portfolio_add_button();
         $button->set_callback_options('data_portfolio_caller', array('id' => $cm->id), '/mod/data/locallib.php');
