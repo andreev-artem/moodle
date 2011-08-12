@@ -496,6 +496,7 @@ function filter_mediaplugin_swf_callback($link) {
     <param name="scale" value="aspect" />
     <param name="base" value="." />
     <param name="allowscriptaccess" value="never" />
+    <param name="wmode" value="transparent" />
 <!--[if !IE]>-->
     <object type="application/x-shockwave-flash" data="$url" width="$width" height="$height">
       <param name="controller" value="true" />
@@ -504,6 +505,7 @@ function filter_mediaplugin_swf_callback($link) {
       <param name="scale" value="aspect" />
       <param name="base" value="." />
       <param name="allowscriptaccess" value="never" />
+      <param name="wmode" value="transparent" />
 <!--<![endif]-->
 $printlink
 <!--[if !IE]>-->
