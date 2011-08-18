@@ -1228,7 +1228,8 @@ class lesson extends lesson_base {
         // clock code
         // get time information for this user
         if (!$timer = $DB->get_records('lesson_timer', array ("lessonid" => $this->properties->id, "userid" => $USER->id), 'starttime DESC', '*', 0, 1)) {
-            print_error('cannotfindtimer', 'lesson');
+            $this->start_timer();
+            $timer = $DB->get_records('lesson_timer', array ("lessonid" => $this->properties->id, "userid" => $USER->id), 'starttime DESC', '*', 0, 1);
         } else {
             $timer = current($timer); // this will get the latest start time record
         }
