@@ -50,6 +50,10 @@ class user_filtering {
         // fist the new filter form
         $this->_addform = new user_add_filter_form($baseurl, array('fields'=>$this->_fields, 'extraparams'=>$extraparams));
         if ($adddata = $this->_addform->get_data()) {
+            if (!empty($adddata->replacefilters)) {
+                $SESSION->user_filtering = array();
+            }
+            
             foreach($this->_fields as $fname=>$field) {
                 $data = $field->check_data($adddata);
                 if ($data === false) {
