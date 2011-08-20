@@ -34,7 +34,7 @@ class user_filtering {
         }
 
         if (empty($fieldnames)) {
-            $fieldnames = array('realname'=>0, 'lastname'=>1, 'firstname'=>1, 'email'=>1, 'city'=>1, 'country'=>1,
+            $fieldnames = array('realname'=>0, 'lastname'=>1, 'firstname'=>1, 'email'=>0, 'city'=>1, 'country'=>1,
                                 'confirmed'=>1, 'profile'=>1, 'courserole'=>1, 'systemrole'=>1, 'cohort'=>1,
                                 'firstaccess'=>1, 'lastaccess'=>1, 'lastlogin'=>1, 'timemodified'=>1, 'username'=>1, 'auth'=>1, 'mnethostid'=>1);
         }
