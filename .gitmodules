@@ -16,3 +16,6 @@
 [submodule "question/type/flash"]
 	path = question/type/flash
 	url = git@github.com:andreev-artem/moodle_question_type_flash.git
+[submodule "admin/report/addenrol"]
+	path = admin/report/addenrol
+	url = git@github.com:andreev-artem/moodle_admin_report_addenrol.git
