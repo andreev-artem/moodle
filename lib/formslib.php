@@ -993,15 +993,6 @@ abstract class moodleform {
         $mform->setType("checkbox_controller$groupid", PARAM_INT);
         $mform->setConstants(array("checkbox_controller$groupid" => $new_select_value));
 
-        // Locate all checkboxes for this group and set their value, IF the optional param was given
-        if (!is_null($select_value)) {
-            foreach ($this->_form->_elements as $element) {
-                if ($element->getAttribute('class') == "checkboxgroup$groupid") {
-                    $mform->setConstants(array($element->getAttribute('name') => $select_value));
-                }
-            }
-        }
-
         $checkbox_controller_name = 'nosubmit_checkbox_controller' . $groupid;
         $mform->registerNoSubmitButton($checkbox_controller_name);
 
@@ -1010,7 +1001,7 @@ abstract class moodleform {
         if (!defined('HTML_QUICKFORM_CHECKBOXCONTROLLER_EXISTS')) {
             $js .= <<<EOS
 function html_quickform_toggle_checkboxes(group) {
-    var checkboxes = getElementsByClassName(document, 'input', 'checkboxgroup' + group);
+    var checkboxes = document.getElementsByClassName('checkboxgroup' + group);
     var newvalue = false;
     var global = eval('html_quickform_checkboxgroup' + group + ';');
     if (global == 1) {
@@ -1574,6 +1565,10 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
             }
         }
 
+        if (is_array($this->_constantValues)) {
+            $unfiltered = HTML_QuickForm::arrayMerge($unfiltered, $this->_constantValues);
+        }
+
         return $unfiltered;
     }
     /**
@@ -1708,8 +1703,16 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
                             }
                         }
                     }
+                    //for editor element, [text] is appended to the name.
+                    if ($element->getType() == 'editor') {
+                        $elementName .= '[text]';
+                        //Add format to rule as moodleform check which format is supported by browser
+                        //it is not set anywhere... So small hack to make sure we pass it down to quickform
+                        if (is_null($rule['format'])) {
+                            $rule['format'] = $element->getFormat();
+                        }
+                    }
                     // Fix for bug displaying errors for elements in a group
-                    //$test[$elementName][] = $registry->getValidationScript($element, $elementName, $rule);
                     $test[$elementName][0][] = $registry->getValidationScript($element, $elementName, $rule);
                     $test[$elementName][1]=$element;
                     //end of fix
@@ -1729,6 +1732,12 @@ var skipClientValidation = false;
 
 function qf_errorHandler(element, _qfMsg) {
   div = element.parentNode;
+
+  if ((div == undefined) || (element.name == undefined)) {
+    //no checking can be done for undefined elements so let server handle it.
+    return true;
+  }
+
   if (_qfMsg != \'\') {
     var errorSpan = document.getElementById(\'id_error_\'+element.name);
     if (!errorSpan) {
@@ -1778,16 +1787,25 @@ function qf_errorHandler(element, _qfMsg) {
                 $elementName);
             $js .= '
 function validate_' . $this->_formName . '_' . $escapedElementName . '(element) {
+  if (undefined == element) {
+     //required element was not found, then let form be submitted without client side validation
+     return true;
+  }
   var value = \'\';
   var errFlag = new Array();
   var _qfGroups = {};
   var _qfMsg = \'\';
   var frm = element.parentNode;
-  while (frm && frm.nodeName.toUpperCase() != "FORM") {
-    frm = frm.parentNode;
+  if ((undefined != element.name) && (frm != undefined)) {
+      while (frm && frm.nodeName.toUpperCase() != "FORM") {
+        frm = frm.parentNode;
+      }
+    ' . join("\n", $jsArr) . '
+      return qf_errorHandler(element, _qfMsg);
+  } else {
+    //element name should be defined else error msg will not be displayed.
+    return true;
   }
-' . join("\n", $jsArr) . '
-  return qf_errorHandler(element, _qfMsg);
 }
 ';
             $validateJS .= '
@@ -2377,17 +2395,18 @@ class MoodleQuickForm_Rule_Required extends HTML_QuickForm_Rule {
     /**
      * This function returns Javascript code used to build client-side validation.
      * It checks if an element is not empty.
-     * Note, that QuickForm does not know how to work with editor text field and builds not correct
-     * JS code for validation. If client check is enabled for editor field it will not be validated
-     * on client side no matter what this function returns.
      *
-     * @param     mixed     $options    Not used yet
+     * @param int $format
      * @return array
      */
-    function getValidationScript($options = null) {
+    function getValidationScript($format = null) {
         global $CFG;
         if (!empty($CFG->strictformsrequired)) {
-            return array('', "{jsVar}.replace(/^\s+$/g, '') == ''");
+            if (!empty($format) && $format == FORMAT_HTML) {
+                return array('', "{jsVar}.replace(/(<[^img|hr|canvas]+>)|&nbsp;|\s+/ig, '') == ''");
+            } else {
+                return array('', "{jsVar}.replace(/^\s+$/g, '') == ''");
+            }
         } else {
             return array('', "{jsVar} == ''");
         }
