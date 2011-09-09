@@ -375,9 +375,7 @@ if ($pageid != LESSON_EOL) {
         $data->id = $PAGE->cm->id;
         $data->pageid = $page->id;
         $data->newpageid = LESSON_NEXTPAGE;
-        if ($nextpage = $lesson->get_next_page($page->nextpageid)) {
-            $data->newpageid = $nextpage->id;
-        }
+        $data->newpageid = $lesson->get_next_page($page->nextpageid);
 
         $customdata = array(
             'title'     => $page->title,
