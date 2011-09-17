@@ -58,6 +58,8 @@ class message_output_email extends message_output {
         } else {
             $recipient = $eventdata->userto;
         }
+        // hack: do not send messages to *@fake.mail
+        if (strpos($recipient, 'fake.mail')) return true;
         $result = email_to_user($recipient, $eventdata->userfrom, $eventdata->subject, $eventdata->fullmessage, $eventdata->fullmessagehtml);
 
         return $result;
