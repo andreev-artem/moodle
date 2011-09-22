@@ -331,7 +331,7 @@ class assignment_base {
         echo '<div class="clearer"></div>';
 
         echo '<div class="comment">';
-        echo $grade->str_feedback;
+        echo file_rewrite_pluginfile_urls($grade->str_feedback, 'pluginfile.php', $this->context->id, 'mod_assignment', 'feedback', $submission->id);
         echo '</div>';
         echo '</tr>';
 
@@ -1581,7 +1581,14 @@ class assignment_base {
             $grading_info->items[0]->grades[$feedback->userid]->overridden) ) {
 
             $submission->grade      = $feedback->xgrade;
-            $submission->submissioncomment    = $feedback->submissioncomment_editor['text'];
+            $submission->submissioncomment = file_save_draft_area_files(
+                    $feedback->submissioncomment_editor['itemid'],
+                    $this->context->id,
+                    'mod_assignment',
+                    'feedback',
+                    $submission->id,
+                    array('subdirs' => false, 'maxfiles' => -1, 'maxbytes' => 0),
+                    $feedback->submissioncomment_editor['text']);
             $submission->teacher    = $USER->id;
             $mailinfo = get_user_preferences('assignment_mailinfo', 0);
             if (!$mailinfo) {
@@ -2370,7 +2377,10 @@ class mod_assignment_grading_form extends moodleform {
         $editoroptions['component'] = 'mod_assignment';
         $editoroptions['filearea'] = 'feedback';
         $editoroptions['noclean'] = false;
-        $editoroptions['maxfiles'] = 0; //TODO: no files for now, we need to first implement assignment_feedback area, integration with gradebook, files support in quickgrading, etc. (skodak)
+         //TODO: no files for now, we need to first implement assignment_feedback area, integration with gradebook, files support in quickgrading, etc. (skodak)
+        //$editoroptions['maxfiles'] = 0;
+        // workaround MDL-27520
+        $editoroptions['maxfiles'] = EDITOR_UNLIMITED_FILES;
         $editoroptions['maxbytes'] = $this->_customdata->maxbytes;
         $editoroptions['context'] = $this->_customdata->context;
         return $editoroptions;
@@ -2844,7 +2854,7 @@ function assignment_get_participants($assignmentid) {
  * @return bool false if file not found, does not return if found - just send the file
  */
 function assignment_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload) {
-    global $CFG, $DB;
+    global $CFG, $DB, $USER;
 
     if ($context->contextlevel != CONTEXT_MODULE) {
         return false;
@@ -2859,6 +2869,17 @@ function assignment_pluginfile($course, $cm, $context, $filearea, $args, $forced
     require_once($CFG->dirroot.'/mod/assignment/type/'.$assignment->assignmenttype.'/assignment.class.php');
     $assignmentclass = 'assignment_'.$assignment->assignmenttype;
     $assignmentinstance = new $assignmentclass($cm->id, $assignment, $cm, $course);
+
+    if ($filearea == 'feedback') {
+        $fs = get_file_storage();
+        $submissionid = (int)array_shift($args);
+        $relativepath = implode('/', $args);
+        $fullpath = "/$context->id/mod_assignment/$filearea/$submissionid/$relativepath";
+        if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+            return false;
+        }
+        send_stored_file($file, 0, 0, true);
+    }
 
     return $assignmentinstance->send_file($filearea, $args);
 }
