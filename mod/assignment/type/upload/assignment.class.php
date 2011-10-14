@@ -166,7 +166,7 @@ class assignment_upload extends assignment_base {
         }
 
         echo '<div class="comment">';
-        echo $grade->str_feedback;
+        echo file_rewrite_pluginfile_urls($grade->str_feedback, 'pluginfile.php', $this->context->id, 'mod_assignment', 'feedback', $submission->id);
         echo '</div>';
         echo '</tr>';
 

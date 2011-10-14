@@ -67,7 +67,14 @@ class assignment_offline extends assignment_base {
             !$grading_info->items[0]->grades[$feedback->userid]->overridden) {
 
             $submission->grade      = $feedback->xgrade;
-            $submission->submissioncomment    = $feedback->submissioncomment_editor['text'];
+            $submission->submissioncomment = file_save_draft_area_files(
+                    $feedback->submissioncomment_editor['itemid'],
+                    $this->context->id,
+                    'mod_assignment',
+                    'feedback',
+                    $submission->id,
+                    array('subdirs' => false, 'maxfiles' => -1, 'maxbytes' => 0),
+                    $feedback->submissioncomment_editor['text']);
             $submission->teacher    = $USER->id;
             $mailinfo = get_user_preferences('assignment_mailinfo', 0);
             if (!$mailinfo) {
