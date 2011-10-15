@@ -769,7 +769,11 @@
             $displaylist['addnote.php'] = get_string('addnewnote', 'notes');
             $displaylist['groupaddnote.php'] = get_string('groupaddnewnote', 'notes');
         }
-
+        // adding "select for bulk actions" bulk functionality
+        if (has_capability('moodle/role:assign', $context) && $context->id != $frontpagectx->id) {
+           $displaylist['addforbulkactions.php'] = get_string('addforbulkactions', 'local_cdp_core_hacks_strings');
+        }
+        
         echo $OUTPUT->help_icon('withselectedusers');
         echo html_writer::tag('label', get_string("withselectedusers"), array('for'=>'formactionid'));
         echo html_writer::select($displaylist, 'formaction', '', array(''=>'choosedots'), array('id'=>'formactionid'));
