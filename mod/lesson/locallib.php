@@ -723,7 +723,7 @@ abstract class lesson_add_page_form_base extends moodleform {
 
         if ($this->standard === true) {
             $mform->addElement('hidden', 'qtype');
-            $mform->setType('qtype', PARAM_SAFEDIR);
+            $mform->setType('qtype', PARAM_INT);
 
             $mform->addElement('text', 'title', get_string('pagetitle', 'lesson'), array('size'=>70));
             $mform->setType('title', PARAM_TEXT);
@@ -1126,19 +1126,19 @@ class lesson extends lesson_base {
         $allpages = $this->load_all_pages();
         if ($this->properties->nextpagedefault) {
             // in Flash Card mode...first get number of retakes
-            $nretakes = $DB->count_records("lesson_grades", array("lessonid"=>$this->properties->id, "userid"=>$USER->id));
+            $nretakes = $DB->count_records("lesson_grades", array("lessonid" => $this->properties->id, "userid" => $USER->id));
             shuffle($allpages);
             $found = false;
             if ($this->properties->nextpagedefault == LESSON_UNSEENPAGE) {
                 foreach ($allpages as $nextpage) {
-                    if (!$DB->count_records("lesson_attempts", array("pageid"=>$nextpage->id, "userid"=>$USER->id, "retry"=>$nretakes))) {
+                    if (!$DB->count_records("lesson_attempts", array("pageid" => $nextpage->id, "userid" => $USER->id, "retry" => $nretakes))) {
                         $found = true;
                         break;
                     }
                 }
             } elseif ($this->properties->nextpagedefault == LESSON_UNANSWEREDPAGE) {
                 foreach ($allpages as $nextpage) {
-                    if (!$DB->count_records("lesson_attempts", array('pageid'=>$nextpage->id, 'userid'=>$USER->id, 'correct'=>1, 'retry'=>$nretakes))) {
+                    if (!$DB->count_records("lesson_attempts", array('pageid' => $nextpage->id, 'userid' => $USER->id, 'correct' => 1, 'retry' => $nretakes))) {
                         $found = true;
                         break;
                     }
@@ -1147,7 +1147,7 @@ class lesson extends lesson_base {
             if ($found) {
                 if ($this->properties->maxpages) {
                     // check number of pages viewed (in the lesson)
-                    if ($DB->count_records("lesson_attempts", array("lessonid"=>$this->properties->id, "userid"=>$USER->id, "retry"=>$nretakes)) >= $this->properties->maxpages) {
+                    if ($DB->count_records("lesson_attempts", array("lessonid" => $this->properties->id, "userid" => $USER->id, "retry" => $nretakes)) >= $this->properties->maxpages) {
                         return LESSON_EOL;
                     }
                 }
@@ -1156,7 +1156,7 @@ class lesson extends lesson_base {
         }
         // In a normal lesson mode
         foreach ($allpages as $nextpage) {
-            if ((int)$nextpage->id===(int)$nextpageid) {
+            if ((int)$nextpage->id === (int)$nextpageid) {
                 return $nextpage->id;
             }
         }
@@ -2150,7 +2150,8 @@ abstract class lesson_page extends lesson_base {
                 $this->answers[$i]->responseformat = $properties->response_editor[$i]['format'];
             }
 
-            if (!empty($this->answers[$i]->answer)) {
+            // we don't need to check for isset here because properties called it's own isset method.
+            if ($this->answers[$i]->answer != '') {
                 if (isset($properties->jumpto[$i])) {
                     $this->answers[$i]->jumpto = $properties->jumpto[$i];
                 }
@@ -2243,7 +2244,7 @@ abstract class lesson_page extends lesson_base {
                 $answer->responseformat = $properties->response_editor[$i]['format'];
             }
 
-            if (!empty($answer->answer)) {
+            if (isset($answer->answer) && $answer->answer != '') {
                 if (isset($properties->jumpto[$i])) {
                     $answer->jumpto = $properties->jumpto[$i];
                 }

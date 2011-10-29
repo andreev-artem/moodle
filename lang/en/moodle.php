@@ -178,7 +178,6 @@ $string['backupincludemoduleuserdatahelp'] = 'Choose whether you want to include
 $string['backupkeephelp'] = 'How many recent backups for each course do you want to keep? (older ones will be deleted automatically)';
 $string['backuplogdetailed'] = 'Detailed execution log';
 $string['backuploglaststatus'] = 'Last execution log';
-$string['backuplogshelp'] = 'If enabled, then course logs will be included in automated backups';
 $string['backupmissinguserinfoperms'] = 'Note: This backup contains no user data. Exercise and Workshop activities will not be included in the backup, since these modules are not compatible with this type of backup.';
 $string['backupnext'] = 'Next backup';
 $string['backupnonisowarning'] = 'Warning: this backup is from a non-Unicode version of Moodle (pre 1.6).  If this backup contains any non-ISO-8859-1 texts then they may be CORRUPTED if you try to restore them to this Unicode version of Moodle.  See the <a href="http://docs.moodle.org/en/Backup_FAQ">Backup FAQ</a> for more information about how to recover this backup correctly.';
@@ -189,7 +188,6 @@ $string['backupsitefileshelp'] = 'If enabled then site files used in courses wil
 $string['backuptakealook'] = 'Please take a look at your backup logs in:
   {$a}';
 $string['backupuserfileshelp'] = 'Choose whether user files (eg profile images) should be included in automated backups';
-$string['backupusershelp'] = 'Select whether you want to include all the users in the server or only the needed users for each course';
 $string['backupversion'] = 'Backup version';
 $string['block'] = 'Block';
 $string['blockconfiga'] = 'Configuring a {$a} block';
@@ -1401,6 +1399,7 @@ $string['rssarticles'] = 'Number of RSS recent articles';
 $string['rsserror'] = 'Error reading RSS data';
 $string['rsserrorauth'] = 'Your RSS link does not contain a valid authentication token.';
 $string['rsserrorguest'] = 'This feed uses guest access to access the data, but guest does not have permission to read the data. Visit the original location that this feed comes from (URL) as a valid user and get a new RSS link from there.';
+$string['rsskeyshelp'] = 'To ensure security and privacy, RSS feed URLs contain a special token that identifies the user they are for. This prevents other users from accessing areas of Moodle they shouldn\'t have access to via RSS feeds.</p><p>This token is automatically created the first time you access an area of Moodle that produces an RSS feed. If you feel that your RSS feed token has been compromised in some way you can request a new one by clicking the Reset link here. Please note that your current RSS feed URLs will then become invalid.';
 $string['rsstype'] = 'RSS feed for this activity';
 $string['saveandnext'] = 'Save and show next';
 $string['savedat'] = 'Saved at:';
