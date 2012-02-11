@@ -83,6 +83,35 @@ $PAGE->navbar->add(get_string('enrolmentoptions','enrol'));
 
 echo $OUTPUT->header();
 
+// print course info
+echo $OUTPUT->box_start('generalbox info');
+
+$course->summary = file_rewrite_pluginfile_urls($course->summary, 'pluginfile.php', $context->id, 'course', 'summary', NULL);
+echo format_text($course->summary, $course->summaryformat, array('overflowdiv'=>true), $course->id);
+
+if (!empty($CFG->coursecontact)) {
+    $coursecontactroles = explode(',', $CFG->coursecontact);
+    foreach ($coursecontactroles as $roleid) {
+        $role = $DB->get_record('role', array('id'=>$roleid));
+        $roleid = (int) $roleid;
+        if ($users = get_role_users($roleid, $context, true)) {
+            foreach ($users as $teacher) {
+                $fullname = fullname($teacher, has_capability('moodle/site:viewfullnames', $context));
+                $namesarray[] = format_string(role_get_name($role, $context)).': <a href="'.$CFG->wwwroot.'/user/view.php?id='.
+                                $teacher->id.'&amp;course='.SITEID.'">'.$fullname.'</a>';
+            }
+        }
+    }
+
+    if (!empty($namesarray)) {
+        echo "<ul class=\"teachers\">\n<li>";
+        echo implode('</li><li>', $namesarray);
+        echo "</li></ul>";
+    }
+}
+
+echo $OUTPUT->box_end();
+
 //TODO: find if future enrolments present and display some info
 
 foreach ($forms as $form) {
