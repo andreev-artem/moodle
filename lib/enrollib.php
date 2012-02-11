@@ -387,6 +387,8 @@ function enrol_add_course_navigation(navigation_node $coursenode, $course) {
 
     $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
 
+    if (isguestuser()) return;
+    
     $instances = enrol_get_instances($course->id, true);
     $plugins   = enrol_get_plugins(true);
 
