@@ -702,6 +702,16 @@ class question_type {
         $question->createdby = $questiondata->createdby;
         $question->modifiedby = $questiondata->modifiedby;
 
+        //Fill extra question fields values
+        $extraquestionfields = $this->extra_question_fields();
+        if (is_array($extraquestionfields)) {
+            //omit table name
+            array_shift($extraquestionfields);
+            foreach($extraquestionfields as $field) {
+                $question->$field = $questiondata->options->$field;
+            }
+        }
+
         $this->initialise_question_hints($question, $questiondata);
     }
 
@@ -995,10 +1005,11 @@ class question_type {
             array_shift($extraanswersfields);
         }
         foreach ($question->options->answers as $answer) {
+            // TODO this should be re-factored to use $format->write_answer().
             $percent = 100 * $answer->fraction;
-            $expout .= "    <answer fraction=\"$percent\">\n";
+            $expout .= "    <answer fraction=\"$percent\" {$format->format($answer->answerformat)}>\n";
             $expout .= $format->writetext($answer->answer, 3, false);
-            $expout .= "      <feedback>\n";
+            $expout .= "      <feedback {$format->format($answer->feedbackformat)}>\n";
             $expout .= $format->writetext($answer->feedback, 4, false);
             $expout .= "      </feedback>\n";
             if (is_array($extraanswersfields)) {
@@ -1120,6 +1131,27 @@ class question_type {
     }
 
     /**
+     * Move all the files belonging to this question's hints when the question
+     * is moved from one context to another.
+     * @param int $questionid the question being moved.
+     * @param int $oldcontextid the context it is moving from.
+     * @param int $newcontextid the context it is moving to.
+     * @param bool $answerstoo whether there is an 'answer' question area,
+     *      as well as an 'answerfeedback' one. Default false.
+     */
+    protected function move_files_in_hints($questionid, $oldcontextid, $newcontextid) {
+        global $DB;
+        $fs = get_file_storage();
+
+        $hintids = $DB->get_records_menu('question_hints',
+                array('questionid' => $questionid), 'id', 'id,1');
+        foreach ($hintids as $hintid => $notused) {
+            $fs->move_area_files_to_new_context($oldcontextid,
+                    $newcontextid, 'question', 'hint', $hintid);
+        }
+    }
+
+    /**
      * Move all the files belonging to this question's answers when the question
      * is moved from one context to another.
      * @param int $questionid the question being moved.
@@ -1170,6 +1202,22 @@ class question_type {
                 $fs->delete_area_files($contextid, 'question', 'answer', $answerid);
             }
             $fs->delete_area_files($contextid, 'question', 'answerfeedback', $answerid);
+        }
+    }
+
+    /**
+     * Delete all the files belonging to this question's hints.
+     * @param int $questionid the question being deleted.
+     * @param int $contextid the context the question is in.
+     */
+    protected function delete_files_in_hints($questionid, $contextid) {
+        global $DB;
+        $fs = get_file_storage();
+
+        $hintids = $DB->get_records_menu('question_hints',
+                array('questionid' => $questionid), 'id', 'id,1');
+        foreach ($hintids as $hintid => $notused) {
+            $fs->delete_area_files($contextid, 'question', 'hint', $hintid);
         }
     }
 

@@ -28,5 +28,11 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
+$string['clianswerno'] = 'n';
+$string['cliansweryes'] = 'y';
+$string['cliincorrectvalueerror'] = 'Lỗi, giá trị không đúng "{$a->value}" for "{$a->option}"';
+$string['cliincorrectvalueretry'] = 'Giá trị không đúng, vui lòng thử lại';
 $string['environmentrequireinstall'] = 'cần phải được cài hay kích hoạt.';
 $string['environmentrequireversion'] = 'Cần phiên bản {$a->needed} trong khi bạn đang dùng {$a->current}';

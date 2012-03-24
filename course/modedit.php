@@ -279,6 +279,9 @@ if ($mform->is_cancelled()) {
         $fromform->completiongradeitemnumber = null;
     }
 
+    // the type of event to trigger (mod_created/mod_updated)
+    $eventname = '';
+
     if (!empty($fromform->update)) {
 
         if (!empty($course->groupmodeforce) or !isset($fromform->groupmode)) {
@@ -302,10 +305,9 @@ if ($mform->is_cancelled()) {
             $cm->availablefrom             = $fromform->availablefrom;
             $cm->availableuntil            = $fromform->availableuntil;
             // The form time is midnight, but because we want it to be
-            // inclusive, set it to 23:59:59 on that day.
+            // inclusive, add 23:59:59 to the time (86,399 seconds).
             if ($cm->availableuntil) {
-                $cm->availableuntil = strtotime('23:59:59',
-                    $cm->availableuntil);
+                $cm->availableuntil += 86399;
             }
             $cm->showavailability          = $fromform->showavailability;
             condition_info::update_cm_from_form($cm,$fromform,true);
@@ -336,20 +338,13 @@ if ($mform->is_cancelled()) {
             set_coursemodule_idnumber($fromform->coursemodule, $fromform->cmidnumber);
         }
 
-        // Now that module is fully updated, also update completion data if 
+        // Now that module is fully updated, also update completion data if
         // required (this will wipe all user completion data and recalculate it)
         if ($completion->is_enabled() && !empty($fromform->completionunlocked)) {
             $completion->reset_all_state($cm);
         }
 
-        // Trigger mod_updated event with information about this module.
-        $eventdata = new stdClass();
-        $eventdata->modulename = $fromform->modulename;
-        $eventdata->name       = $fromform->name;
-        $eventdata->cmid       = $fromform->coursemodule;
-        $eventdata->courseid   = $course->id;
-        $eventdata->userid     = $USER->id;
-        events_trigger('mod_updated', $eventdata);
+        $eventname = 'mod_updated';
 
         add_to_log($course->id, "course", "update mod",
                    "../mod/$fromform->modulename/view.php?id=$fromform->coursemodule",
@@ -388,10 +383,9 @@ if ($mform->is_cancelled()) {
             $newcm->availablefrom             = $fromform->availablefrom;
             $newcm->availableuntil            = $fromform->availableuntil;
             // The form time is midnight, but because we want it to be
-            // inclusive, set it to 23:59:59 on that day.
+            // inclusive, add 23:59:59 to the time (86,399 seconds).
             if ($newcm->availableuntil) {
-                $newcm->availableuntil = strtotime('23:59:59',
-                    $newcm->availableuntil);
+                $newcm->availableuntil += 86399;
             }
             $newcm->showavailability          = $fromform->showavailability;
         }
@@ -454,14 +448,7 @@ if ($mform->is_cancelled()) {
             condition_info::update_cm_from_form((object)array('id'=>$fromform->coursemodule), $fromform, false);
         }
 
-        // Trigger mod_created event with information about this module.
-        $eventdata = new stdClass();
-        $eventdata->modulename = $fromform->modulename;
-        $eventdata->name       = $fromform->name;
-        $eventdata->cmid       = $fromform->coursemodule;
-        $eventdata->courseid   = $course->id;
-        $eventdata->userid     = $USER->id;
-        events_trigger('mod_created', $eventdata);
+        $eventname = 'mod_created';
 
         add_to_log($course->id, "course", "add mod",
                    "../mod/$fromform->modulename/view.php?id=$fromform->coursemodule",
@@ -472,6 +459,15 @@ if ($mform->is_cancelled()) {
     } else {
         print_error('invaliddata');
     }
+
+    // Trigger mod_created/mod_updated event with information about this module.
+    $eventdata = new stdClass();
+    $eventdata->modulename = $fromform->modulename;
+    $eventdata->name       = $fromform->name;
+    $eventdata->cmid       = $fromform->coursemodule;
+    $eventdata->courseid   = $course->id;
+    $eventdata->userid     = $USER->id;
+    events_trigger($eventname, $eventdata);
 
     // sync idnumber with grade_item
     if ($grade_item = grade_item::fetch(array('itemtype'=>'mod', 'itemmodule'=>$fromform->modulename,

@@ -552,7 +552,7 @@ function validate_param($param, $type, $allownull=NULL_NOT_ALLOWED, $debuginfo='
  * </code>
  *
  * @param mixed $param the variable we are cleaning
- * @param int $type expected format of param after cleaning.
+ * @param string $type expected format of param after cleaning.
  * @return mixed
  */
 function clean_param($param, $type) {
@@ -1076,7 +1076,7 @@ function get_config($plugin, $name = NULL) {
         if ($localcfg) {
             return (object)$localcfg;
         } else {
-            return null;
+            return new stdClass();
         }
 
     } else {
@@ -1626,6 +1626,7 @@ function make_timestamp($year, $month=1, $day=1, $hour=0, $minute=0, $second=0, 
     $totalsecs = abs($totalsecs);
 
     if (!$str) {  // Create the str structure the slow way
+        $str = new stdClass();
         $str->day   = get_string('day');
         $str->days  = get_string('days');
         $str->hour  = get_string('hour');
@@ -1972,7 +1973,7 @@ function get_timezone_record($timezonename) {
     }
 
     return $cache[$timezonename] = $DB->get_record_sql('SELECT * FROM {timezone}
-                                                        WHERE name = ? ORDER BY year DESC', array($timezonename), true);
+                                                        WHERE name = ? ORDER BY year DESC', array($timezonename), IGNORE_MULTIPLE);
 }
 
 /**
@@ -2498,6 +2499,10 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
                 if ($preventredirect) {
                     throw new require_login_exception('Course is hidden');
                 }
+                // We need to override the navigation URL as the course won't have
+                // been added to the navigation and thus the navigation will mess up
+                // when trying to find it.
+                navigation_node::override_active_url(new moodle_url('/'));
                 notice(get_string('coursehidden'), $CFG->wwwroot .'/');
             }
         }
@@ -2529,7 +2534,11 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
 
         $access = false;
 
-        if (is_viewing($coursecontext, $USER)) {
+        if (is_role_switched($course->id)) {
+            // ok, user had to be inside this course before the switch
+            $access = true;
+
+        } else if (is_viewing($coursecontext, $USER)) {
             // ok, no need to mess with enrol
             $access = true;
 
@@ -3294,7 +3303,8 @@ function create_user_record($username, $password, $auth = 'manual') {
     }
     $newuser->confirmed = 1;
     $newuser->lastip = getremoteaddr();
-    $newuser->timemodified = time();
+    $newuser->timecreated = time();
+    $newuser->timemodified = $newuser->timecreated;
     $newuser->mnethostid = $CFG->mnet_localhost_id;
 
     $newuser->id = $DB->insert_record('user', $newuser);
@@ -3357,6 +3367,7 @@ function update_user_record($username) {
         }
         if ($newuser) {
             $newuser['id'] = $oldinfo->id;
+            $newuser['timemodified'] = time();
             $DB->update_record('user', $newuser);
             // fetch full user record for the event, the complete user data contains too much info
             // and we want to be consistent with other places that trigger this event
@@ -3459,6 +3470,12 @@ function delete_user($user) {
     // last course access not necessary either
     $DB->delete_records('user_lastaccess', array('userid'=>$user->id));
 
+    // remove all user tokens
+    $DB->delete_records('external_tokens', array('userid'=>$user->id));
+
+    // unauthorise the user for all services
+    $DB->delete_records('external_services_users', array('userid'=>$user->id));
+
     // now do a final accesslib cleanup - removes all role assignments in user context and context itself
     delete_context(CONTEXT_USER, $user->id);
 
@@ -3478,6 +3495,9 @@ function delete_user($user) {
     $updateuser->timemodified = time();
 
     $DB->update_record('user', $updateuser);
+    // Add this action to log
+    add_to_log(SITEID, 'user', 'delete', "view.php?id=$user->id", $user->firstname.' '.$user->lastname);
+
 
     // notify auth plugin - do not block the delete even when plugin fails
     $authplugin = get_auth_plugin($user->auth);
@@ -4593,19 +4613,31 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml='', $a
     global $CFG, $FULLME;
 
     if (empty($user) || empty($user->email)) {
-        mtrace('Error: lib/moodlelib.php email_to_user(): User is null or has no email');
+        $nulluser = 'User is null or has no email';
+        error_log($nulluser);
+        if (CLI_SCRIPT) {
+            mtrace('Error: lib/moodlelib.php email_to_user(): '.$nulluser);
+        }
         return false;
     }
 
     if (!empty($user->deleted)) {
-        // do not mail delted users
-        mtrace('Error: lib/moodlelib.php email_to_user(): User is deleted');
+        // do not mail deleted users
+        $userdeleted = 'User is deleted';
+        error_log($userdeleted);
+        if (CLI_SCRIPT) {
+            mtrace('Error: lib/moodlelib.php email_to_user(): '.$userdeleted);
+        }
         return false;
     }
 
     if (!empty($CFG->noemailever)) {
         // hidden setting for development sites, set in config.php if needed
-        mtrace('Error: lib/moodlelib.php email_to_user(): Not sending email due to noemailever config setting');
+        $noemail = 'Not sending email due to noemailever config setting';
+        error_log($noemail);
+        if (CLI_SCRIPT) {
+            mtrace('Error: lib/moodlelib.php email_to_user(): '.$noemail);
+        }
         return true;
     }
 
@@ -4616,14 +4648,26 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml='', $a
     }
 
     // skip mail to suspended users
-    if (isset($user->auth) && $user->auth=='nologin') {
+    if ((isset($user->auth) && $user->auth=='nologin') or (isset($user->suspended) && $user->suspended)) {
         return true;
+    }
+
+    if (!validate_email($user->email)) {
+        // we can not send emails to invalid addresses - it might create security issue or confuse the mailer
+        $invalidemail = "User $user->id (".fullname($user).") email ($user->email) is invalid! Not sending.";
+        error_log($invalidemail);
+        if (CLI_SCRIPT) {
+            mtrace('Error: lib/moodlelib.php email_to_user(): '.$invalidemail);
+        }
+        return false;
     }
 
     if (over_bounce_threshold($user)) {
         $bouncemsg = "User $user->id (".fullname($user).") is over bounce threshold! Not sending.";
         error_log($bouncemsg);
-        mtrace('Error: lib/moodlelib.php email_to_user(): '.$bouncemsg);
+        if (CLI_SCRIPT) {
+            mtrace('Error: lib/moodlelib.php email_to_user(): '.$bouncemsg);
+        }
         return false;
     }
 
@@ -4767,8 +4811,10 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml='', $a
         }
         return true;
     } else {
-        mtrace('ERROR: '. $mail->ErrorInfo);
         add_to_log(SITEID, 'library', 'mailer', $FULLME, 'ERROR: '. $mail->ErrorInfo);
+        if (CLI_SCRIPT) {
+            mtrace('Error: lib/moodlelib.php email_to_user(): '.$mail->ErrorInfo);
+        }
         if (!empty($mail->SMTPDebug)) {
             echo '</pre>';
         }
@@ -4922,7 +4968,9 @@ function reset_password_and_mail($user) {
 
     $subject = get_string('emailconfirmationsubject', '', format_string($site->fullname));
 
-    $data->link  = $CFG->wwwroot .'/login/confirm.php?data='. $user->secret .'/'. urlencode($user->username);
+    $username = urlencode($user->username);
+    $username = str_replace('.', '%2E', $username); // prevent problems with trailing dots
+    $data->link  = $CFG->wwwroot .'/login/confirm.php?data='. $user->secret .'/'. $username;
     $message     = get_string('emailconfirmation', '', $data);
     $messagehtml = text_to_html(get_string('emailconfirmation', '', $data), false, false, true);
 
@@ -6806,12 +6854,17 @@ class emoticon_manager {
  *
  * @todo Finish documenting this function
  *
- * @param string $data Data to encrypt
- * @return string The now encrypted data
+ * @param string $data        Data to encrypt.
+ * @param bool $usesecurekey  Lets us know if we are using the old or new password.
+ * @return string             The now encrypted data.
  */
-function rc4encrypt($data) {
-    $password = 'nfgjeingjk';
-    return endecrypt($password, $data, '');
+function rc4encrypt($data, $usesecurekey = false) {
+    if (!$usesecurekey) {
+        $passwordkey = 'nfgjeingjk';
+    } else {
+        $passwordkey = get_site_identifier();
+    }
+    return endecrypt($passwordkey, $data, '');
 }
 
 /**
@@ -6819,12 +6872,17 @@ function rc4encrypt($data) {
  *
  * @todo Finish documenting this function
  *
- * @param string $data Data to decrypt
- * @return string The now decrypted data
+ * @param string $data        Data to decrypt.
+ * @param bool $usesecurekey  Lets us know if we are using the old or new password.
+ * @return string             The now decrypted data.
  */
-function rc4decrypt($data) {
-    $password = 'nfgjeingjk';
-    return endecrypt($password, $data, 'de');
+function rc4decrypt($data, $usesecurekey = false) {
+    if (!$usesecurekey) {
+        $passwordkey = 'nfgjeingjk';
+    } else {
+        $passwordkey = get_site_identifier();
+    }
+    return endecrypt($passwordkey, $data, 'de');
 }
 
 /**
@@ -7054,7 +7112,6 @@ function get_core_subsystems() {
             'langconfig'  => NULL,
             'license'     => NULL,
             'mathslib'    => NULL,
-            'message'     => 'message',
             'message'     => 'message',
             'mimetypes'   => NULL,
             'mnet'        => 'mnet',
@@ -7310,32 +7367,66 @@ function get_list_of_plugins($directory='mod', $exclude='', $basedir='') {
     return $plugins;
 }
 
+/**
+* Invoke plugin's callback functions
+*
+* @param string $type plugin type e.g. 'mod'
+* @param string $name plugin name
+* @param string $feature feature name
+* @param string $action feature's action
+* @param array $params parameters of callback function, should be an array
+* @param mixed $default default value if callback function hasn't been defined, or if it retursn null.
+* @return mixed
+*
+* @todo Decide about to deprecate and drop plugin_callback() - MDL-30743
+*/
+function plugin_callback($type, $name, $feature, $action, $params = null, $default = null) {
+    return component_callback($type . '_' . $name, $feature . '_' . $action, (array) $params, $default);
+}
 
 /**
- * invoke plugin's callback functions
+ * Invoke component's callback functions
  *
- * @param string $type Plugin type e.g. 'mod'
- * @param string $name Plugin name
- * @param string $feature Feature code (FEATURE_xx constant)
- * @param string $action Feature's action
- * @param string $options parameters of callback function, should be an array
- * @param mixed $default default value if callback function hasn't been defined
+ * @param string $component frankenstyle component name, e.g. 'mod_quiz'
+ * @param string $function the rest of the function name, e.g. 'cron' will end up calling 'mod_quiz_cron'
+ * @param array $params parameters of callback function
+ * @param mixed $default default value if callback function hasn't been defined, or if it retursn null.
  * @return mixed
  */
-function plugin_callback($type, $name, $feature, $action, $options = null, $default=null) {
-    global $CFG;
+function component_callback($component, $function, array $params = array(), $default = null) {
+    global $CFG; // this is needed for require_once() below
 
-    $name = clean_param($name, PARAM_SAFEDIR);
-    $function = $name.'_'.$feature.'_'.$action;
-    $file = get_component_directory($type . '_' . $name) . '/lib.php';
+    $cleancomponent = clean_param($component, PARAM_SAFEDIR);
+    if (empty($cleancomponent)) {
+        throw new coding_exception('Invalid component used in plugin/component_callback():' . $component);
+    }
+    $component = $cleancomponent;
+
+    list($type, $name) = normalize_component($component);
+    $component = $type . '_' . $name;
+
+    $oldfunction = $name.'_'.$function;
+    $function = $component.'_'.$function;
+
+    $dir = get_component_directory($component);
+    if (empty($dir)) {
+        throw new coding_exception('Invalid component used in plugin/component_callback():' . $component);
+    }
 
     // Load library and look for function
-    if (file_exists($file)) {
-        require_once($file);
+    if (file_exists($dir.'/lib.php')) {
+        require_once($dir.'/lib.php');
     }
+
+    if (!function_exists($function) and function_exists($oldfunction)) {
+        // In Moodle 2.2 and greater this will result in a debugging notice however
+        // for 2.1+ we tolerate it.
+        $function = $oldfunction;
+    }
+
     if (function_exists($function)) {
         // Function exists, so just return function result
-        $ret = call_user_func_array($function, (array)$options);
+        $ret = call_user_func_array($function, $params);
         if (is_null($ret)) {
             return $default;
         } else {
@@ -7675,7 +7766,8 @@ function get_device_type() {
          return 'tablet';
     }
 
-    if (strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE 6.') !== false) {
+    // Safe way to check for IE6 and not get false positives for some IE 7/8 users
+    if (substr($_SERVER['HTTP_USER_AGENT'], 0, 34) === 'Mozilla/4.0 (compatible; MSIE 6.0;') {
         return 'legacy';
     }
 
@@ -8454,12 +8546,17 @@ function generate_password($maxlen=10) {
         $filler1 = $fillers[rand(0, strlen($fillers) - 1)];
         $password = $word1 . $filler1 . $word2;
     } else {
-        $maxlen = !empty($CFG->minpasswordlength) ? $CFG->minpasswordlength : 0;
+        $minlen = !empty($CFG->minpasswordlength) ? $CFG->minpasswordlength : 0;
         $digits = $CFG->minpassworddigits;
         $lower = $CFG->minpasswordlower;
         $upper = $CFG->minpasswordupper;
         $nonalphanum = $CFG->minpasswordnonalphanum;
-        $additional = $maxlen - ($lower + $upper + $digits + $nonalphanum);
+        $total = $lower + $upper + $digits + $nonalphanum;
+        // minlength should be the greater one of the two ( $minlen and $total )
+        $minlen = $minlen < $total ? $total : $minlen;
+        // maxlen can never be smaller than minlen
+        $maxlen = $minlen > $maxlen ? $minlen : $maxlen;
+        $additional = $maxlen - $total;
 
         // Make sure we have enough characters to fulfill
         // complexity requirements

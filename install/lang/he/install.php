@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'ספריית מנהל המערכת';
 $string['availablelangs'] = 'חבילות שפה זמינות';
 $string['chooselanguagehead'] = 'בחר שפה';
@@ -39,6 +41,7 @@ $string['databasehost'] = 'מסד הנתונים המארח (host)';
 $string['databasename'] = 'שם מסד הנתונים';
 $string['databasetypehead'] = 'בחר התקן מסד הנתונים';
 $string['dataroot'] = 'ספריית הנתונים';
+$string['datarootpermission'] = 'הרשאות תיקיות bתונים (data)';
 $string['dbprefix'] = 'Tables prefix';
 $string['dirroot'] = 'ספריית ה-Moodle';
 $string['environmenthead'] = 'בודק את הסביבה שלך...';
@@ -80,14 +83,13 @@ $string['pathsunsecuredataroot'] = 'ספריית המידע (Data Directory) ל�
 $string['pathswrongadmindir'] = 'ספריית ה-admin לא קיימת';
 $string['phpextension'] = 'הרחבת PHP {$a}';
 $string['phpversion'] = 'גירסת PHP';
-$string['phpversionhelp'] = '<p>גירסת PHP חייבת להיות לפחות 4.3.0 או 5.1.0 (בגירסאות 5.0.x קיימות מספר בעיות ידועות) </p>
-<p> במערכת שלך פועלת כרגע גירסת {$a} </p>
-<p> אתה חייב לשדרג את גירסת ה-PHP שלך או לעבור למחשב מארח עם עם גירסת PHP חדשה! <br/>
-(במקרים של גרסת 5.0.x תוכל גם לרדת בגירסה ל- 4.4.x)
+$string['phpversionhelp'] = '<p>גרסת PHP חייבת להיות לפחות 4.3.0 או 5.1.0 (בגרסאות 5.0.x קיימות מספר בעיות ידועות) </p>
+<p> במערכת שלך פועלת כרגע גרסת {$a} </p>
+<p> אתה חייב לשדרג את גרסת ה-PHP שלך או לעבור למחשב מארח עם עם גירסת PHP חדשה! <br/>
+(במקרים של גרסת 5.0.x תוכל גם לרדת בגרסה ל- 4.4.x)
 </p>';
 $string['welcomep10'] = '{$a->installername} ({$a->installerversion})';
-$string['welcomep20'] = 'הינך רואה את עמוד זה מפני שהתקנת והפעלת בהלכה את <strong> $a-packname {$a->packversion} 
-</strong>
+$string['welcomep20'] = 'הינך רואה את עמוד זה מפני שהתקנת והפעלת בהלכה את <strong>{$a->packname} {$a->packversion}</strong>
 חבילה במחשבך. ברכותינו!';
 $string['welcomep30'] = 'גירסת <strong>{$a->installername}</strong> כוללת את היישומים ליצור סביבה אשר בה <strong> Moodle </strong>
 יפעל דהיינו:';
@@ -103,5 +105,5 @@ $string['welcomep50'] = 'השימוש בכל היישומים בחבילה זו 
 href="http://www.gnu.org/copyleft/gpl.html">GPL</a>';
 $string['welcomep60'] = 'העמודים הבאים יובילו אותך בצורה פשוטה דרך כמה צעדים לעיצוב הגדרות <strong>Moodle</strong> במחשבך.
 תוכל לאשר את הגדרות  ברירת המחדל או, באפשרותך, לשנותם לפי צרכיך.';
-$string['welcomep70'] = 'הקש על לחצן ה"המשך" למטה כדי להמשיך עם הגדרת ה-<strong>Moodle</strong>';
+$string['welcomep70'] = 'לחצו "המשך" למטה כדי להמשיך עם הגדרת ה-<strong>Moodle</strong>';
 $string['wwwroot'] = 'כתובת האתר';

@@ -54,9 +54,13 @@ require_login($quizobj->get_courseid(), false, $quizobj->get_cm());
 require_sesskey();
 $PAGE->set_pagelayout('base');
 
-// if no questions have been set up yet redirect to edit.php
-if (!$quizobj->has_questions() && $quizobj->has_capability('mod/quiz:manage')) {
-    redirect($quizobj->edit_url());
+// if no questions have been set up yet redirect to edit.php or display an error.
+if (!$quizobj->has_questions()) {
+    if ($quizobj->has_capability('mod/quiz:manage')) {
+        redirect($quizobj->edit_url());
+    } else {
+        print_error('cannotstartnoquestions', 'quiz', $quizobj->view_url());
+    }
 }
 
 // Create an object to manage all the other (non-roles) access rules.
@@ -79,7 +83,7 @@ if ($quizobj->is_preview_user() && $forcenew) {
 }
 
 // Look for an existing attempt.
-$attempts = quiz_get_user_attempts($quiz->id, $USER->id, 'all');
+$attempts = quiz_get_user_attempts($quiz->id, $USER->id, 'all', true);
 $lastattempt = end($attempts);
 
 // If an in-progress attempt exists, check password then redirect to it.
@@ -102,7 +106,7 @@ $messages = $accessmanager->prevent_access() +
 if (!$quizobj->is_preview_user() && $messages) {
     $output = $PAGE->get_renderer('mod_quiz');
     print_error('attempterror', 'quiz', $quizobj->view_url(),
-            $output->print_messages($messages));
+            $output->access_messages($messages));
 }
 $accessmanager->do_password_check($quizobj->is_preview_user());
 

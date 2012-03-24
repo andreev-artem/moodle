@@ -154,19 +154,19 @@ class question_engine_attempt_upgrader {
 
         $quizattemptsrs = $DB->get_recordset_select('quiz_attempts', $where, $params, 'uniqueid');
         $questionsessionsrs = $DB->get_recordset_sql("
-                SELECT *
-                FROM {question_sessions}
-                WHERE attemptid IN (
-                    SELECT uniqueid FROM {quiz_attempts} WHERE $where)
-                ORDER BY attemptid, questionid
+                SELECT s.*
+                  FROM {question_sessions} s
+                  JOIN {quiz_attempts} a ON (attemptid = uniqueid)
+                 WHERE $where
+              ORDER BY attemptid, questionid
         ", $params);
 
         $questionsstatesrs = $DB->get_recordset_sql("
-                SELECT *
-                FROM {question_states}
-                WHERE attempt IN (
-                    SELECT uniqueid FROM {quiz_attempts} WHERE $where)
-                ORDER BY attempt, question, seq_number, id
+                SELECT s.*
+                  FROM {question_states} s
+                  JOIN {quiz_attempts} ON (s.attempt = uniqueid)
+                 WHERE $where
+              ORDER BY s.attempt, question, seq_number, s.id
         ", $params);
 
         $datatodo = $quizattemptsrs && $questionsessionsrs && $questionsstatesrs;
@@ -245,6 +245,11 @@ class question_engine_attempt_upgrader {
             $qa = $qas[$questionid];
             $qa->questionusageid = $attempt->uniqueid;
             $qa->slot = $i;
+            if (textlib_get_instance()->strlen($qa->questionsummary) > question_bank::MAX_SUMMARY_LENGTH) {
+                // It seems some people write very long quesions! MDL-30760
+                $qa->questionsummary = textlib_get_instance()->substr($qa->questionsummary,
+                        0, question_bank::MAX_SUMMARY_LENGTH - 3) . '...';
+            }
             $this->insert_record('question_attempts', $qa);
             $layout[$questionkeys[$questionid]] = $qa->slot;
 

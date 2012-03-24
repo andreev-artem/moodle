@@ -153,12 +153,13 @@ if (data_submitted() && confirm_sesskey()) {
 
         } else if (optional_param('fill', null, PARAM_BOOL)) {
             $correctresponse = $quba->get_correct_response($slot);
-            $quba->process_action($slot, $correctresponse);
+            if (!is_null($correctresponse)) {
+                $quba->process_action($slot, $correctresponse);
 
-            $transaction = $DB->start_delegated_transaction();
-            question_engine::save_questions_usage_by_activity($quba);
-            $transaction->allow_commit();
-
+                $transaction = $DB->start_delegated_transaction();
+                question_engine::save_questions_usage_by_activity($quba);
+                $transaction->allow_commit();
+            }
             redirect($actionurl);
 
         } else if (optional_param('finish', null, PARAM_BOOL)) {
@@ -211,6 +212,10 @@ if ($quba->get_question_state($slot)->is_finished()) {
     $finishdisabled = ' disabled="disabled"';
     $filldisabled = ' disabled="disabled"';
 }
+// If question type cannot give us a correct response, disable this button.
+if (is_null($quba->get_correct_response($slot))) {
+    $filldisabled = ' disabled="disabled"';
+}
 if (!$previewid) {
     $restartdisabled = ' disabled="disabled"';
 }
@@ -225,8 +230,10 @@ echo $OUTPUT->header();
 // Start the question form.
 echo '<form method="post" action="' . $actionurl .
         '" enctype="multipart/form-data" id="responseform">', "\n";
+echo '<div>';
 echo '<input type="hidden" name="sesskey" value="' . sesskey() . '" />', "\n";
 echo '<input type="hidden" name="slots" value="' . $slot . '" />', "\n";
+echo '</div>';
 
 // Output the question.
 echo $quba->render_question($slot, $options, $displaynumber);

@@ -55,10 +55,25 @@ $completion->set_module_viewed($cm);
 
 $PAGE->set_url('/mod/url/view.php', array('id' => $cm->id));
 
-// Make sure URL is valid before generating output
-$url->externalurl = clean_param($url->externalurl, PARAM_URL);
-if (empty($url->externalurl)) {
-    print_error('invalidstoredurl', 'url');
+// Make sure URL exists before generating output - some older sites may contain empty urls
+// Do not use PARAM_URL here, it is too strict and does not support general URIs!
+$exturl = trim($url->externalurl);
+if (empty($exturl) or $exturl === 'http://') {
+    url_print_header($url, $cm, $course);
+    url_print_heading($url, $cm, $course);
+    url_print_intro($url, $cm, $course);
+    notice(get_string('invalidstoredurl', 'url'), new moodle_url('/course/view.php', array('id'=>$cm->course)));
+    die;
+}
+unset($exturl);
+
+$displaytype = url_get_final_display_type($url);
+if ($displaytype == RESOURCELIB_DISPLAY_OPEN) {
+    // For 'open' links, we always redirect to the content - except if the user
+    // just chose 'save and display' from the form then that would be confusing
+    if (!isset($_SERVER['HTTP_REFERER']) || strpos($_SERVER['HTTP_REFERER'], 'modedit.php') === false) {
+        $redirect = true;
+    }
 }
 
 if ($redirect) {
@@ -68,7 +83,7 @@ if ($redirect) {
     redirect(str_replace('&amp;', '&', $fullurl));
 }
 
-switch (url_get_final_display_type($url)) {
+switch ($displaytype) {
     case RESOURCELIB_DISPLAY_EMBED:
         url_display_embed($url, $cm, $course);
         break;

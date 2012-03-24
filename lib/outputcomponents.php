@@ -276,8 +276,10 @@ class user_picture implements renderable {
             $renderer = $page->get_renderer('core');
         }
 
-        if (!empty($CFG->forcelogin) and !isloggedin()) {
+        if ((!empty($CFG->forcelogin) and !isloggedin()) ||
+                (!empty($CFG->forceloginforprofileimage) && (!isloggedin() || isguestuser()))) {
             // protect images if login required and not logged in;
+            // also if login is required for profile images and is not logged in or guest
             // do not use require_login() because it is expensive and not suitable here anyway
             return $renderer->pix_url('u/f1');
         }
@@ -1180,7 +1182,7 @@ class html_writer {
                     $timeunits[$i] = userdate(gmmktime(12,0,0,$i,15,2000), "%B");
                 }
                 $userdatetype = 'month';
-                $currentdate['month'] = $currentdate['mon'];
+                $currentdate['month'] = (int)$currentdate['mon'];
                 break;
             case 'days':
                 for ($i=1; $i<=31; $i++) {

@@ -394,6 +394,10 @@ function process_group_tag($tagcontents){
 
                 $courseid = $DB->insert_record('course', $course);
 
+                // Setup default enrolment plugins
+                $course->id = $courseid;
+                enrol_course_updated(true, $course, null);
+
                 // Setup the blocks
                 $course = $DB->get_record('course', array('id' => $courseid));
                 blocks_add_default_course_blocks($course);
@@ -560,6 +564,8 @@ function process_membership_tag($tagcontents){
     // In order to reduce the number of db queries required, group name/id associations are cached in this array:
     $groupids = array();
 
+    $ship = new stdClass();
+
     if(preg_match('{<sourcedid>.*?<id>(.+?)</id>.*?</sourcedid>}is', $tagcontents, $matches)){
         $ship->coursecode = ($truncatecoursecodes > 0)
                                  ? substr(trim($matches[1]), 0, intval($truncatecoursecodes))
@@ -571,8 +577,8 @@ function process_membership_tag($tagcontents){
         $courseobj->id = $ship->courseid;
 
         foreach($membermatches as $mmatch){
-            unset($member);
-            unset($memberstoreobj);
+            $member = new stdClass();
+            $memberstoreobj = new stdClass();
             if(preg_match('{<sourcedid>.*?<id>(.+?)</id>.*?</sourcedid>}is', $mmatch[1], $matches)){
                 $member->idnumber = trim($matches[1]);
             }
@@ -592,6 +598,7 @@ function process_membership_tag($tagcontents){
               //echo "<p>process_membership_tag: unenrolling member due to recstatus of 3</p>";
             }
 
+            $timeframe = new stdClass();
             $timeframe->begin = 0;
             $timeframe->end = 0;
             if(preg_match('{<role\b.*?<timeframe>(.+?)</timeframe>.*?</role>}is', $mmatch[1], $matches)){
@@ -650,6 +657,7 @@ function process_membership_tag($tagcontents){
                                 $groupids[$member->groupname] = $groupid; // Store ID in cache
                             } else {
                                 // Attempt to create the group
+                                $group = new stdClass();
                                 $group->name = $member->groupname;
                                 $group->courseid = $ship->courseid;
                                 $group->timecreated = time();
@@ -722,6 +730,7 @@ function log_line($string){
 * Process the INNER contents of a <timeframe> tag, to return beginning/ending dates.
 */
 function decode_timeframe($string){ // Pass me the INNER CONTENTS of a <timeframe> tag - beginning and/or ending is returned, in unix time, zero indicating not specified
+    $ret = new stdClass();
     $ret->begin = $ret->end = 0;
     // Explanatory note: The matching will ONLY match if the attribute restrict="1"
     // because otherwise the time markers should be ignored (participation should be

@@ -166,7 +166,6 @@ if ( !$nostudents ) {
             if ($sco->launch!='') {
                 $columns[]= 'scograde'.$sco->id;
                 $headers[]= format_string($sco->title);
-                $table->head[]= format_string($sco->title);
             }
         }
     } else {
@@ -528,12 +527,18 @@ $countsql .= ' AND '.$twhere;
                 echo '</tr></table>';
             }
         }
-        if (!$download) {
-            $mform->set_data($displayoptions + compact('detailedrep', 'pagesize'));
-            $mform->display();
-        }
     } else {
-        echo $OUTPUT->notification(get_string('noactivity', 'scorm'));
+        if ($candelete && !$download) {
+            echo '</div>';
+            echo '</form>';
+            $table->finish_output();
+        }
+        echo '</div>';
+    }
+    // Show preferences form irrespective of whether there are attempts to report or not
+    if (!$download) {
+        $mform->set_data($displayoptions + compact('detailedrep', 'pagesize', 'attemptsmode'));
+        $mform->display();
     }
     if ($download == 'Excel' or $download == 'ODS') {
         $workbook->close();

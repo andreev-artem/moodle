@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'Rendszergazdakönyvtár';
 $string['availablelangs'] = 'Elérhető nyelvek listája';
 $string['chooselanguagehead'] = 'Nyelv kiválasztása';
@@ -38,6 +40,7 @@ $string['databasehost'] = 'Az adatbázis gazdagépe';
 $string['databasename'] = 'Az adatbázis neve';
 $string['databasetypehead'] = 'Adatbázismotor kiválasztása';
 $string['dataroot'] = 'Adatkönyvtár';
+$string['datarootpermission'] = 'Engedély adatkönyvtárakhoz';
 $string['dbprefix'] = 'Táblázat előtagja';
 $string['dirroot'] = 'Moodle-könyvtár';
 $string['environmenthead'] = 'Környezetének ellenőrzése ...';

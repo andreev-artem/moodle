@@ -371,40 +371,35 @@ class restore_gradebook_structure_step extends restore_structure_step {
         }
         $rs->close();
 
-        //need to correct the grade category path and parent
+        // Need to correct the grade category path and parent
         $conditions = array(
             'courseid' => $this->get_courseid()
         );
-        $grade_category = new stdclass();
 
         $rs = $DB->get_recordset('grade_categories', $conditions);
-        if (!empty($rs)) {
-            //get all the parents correct first as grade_category::build_path() loads category parents from the DB
-            foreach($rs as $gc) {
-                if (!empty($gc->parent)) {
-                    $grade_category->id = $gc->id;
-                    $grade_category->parent = $this->get_mappingid('grade_category', $gc->parent);
-                    $DB->update_record('grade_categories', $grade_category);
-                }
-            }
-        }
-        if (isset($grade_category->parent)) {
-            unset($grade_category->parent);
-        }
-        $rs->close();
-
-        $rs = $DB->get_recordset('grade_categories', $conditions);
-        if (!empty($rs)) {
-            //now we can rebuild all the paths
-            foreach($rs as $gc) {
+        // Get all the parents correct first as grade_category::build_path() loads category parents from the DB
+        foreach ($rs as $gc) {
+            if (!empty($gc->parent)) {
+                $grade_category = new stdClass();
                 $grade_category->id = $gc->id;
-                $grade_category->path = grade_category::build_path($gc);
+                $grade_category->parent = $this->get_mappingid('grade_category', $gc->parent);
                 $DB->update_record('grade_categories', $grade_category);
             }
         }
         $rs->close();
 
-        //Restore marks items as needing update. Update everything now.
+        // Now we can rebuild all the paths
+        $rs = $DB->get_recordset('grade_categories', $conditions);
+        foreach ($rs as $gc) {
+            $grade_category = new stdClass();
+            $grade_category->id = $gc->id;
+            $grade_category->path = grade_category::build_path($gc);
+            $grade_category->depth = substr_count($grade_category->path, '/') - 1;
+            $DB->update_record('grade_categories', $grade_category);
+        }
+        $rs->close();
+
+        // Restore marks items as needing update. Update everything now.
         grade_regrade_final_grades($this->get_courseid());
     }
 }
@@ -688,7 +683,7 @@ class restore_create_included_users extends restore_execution_step {
 
     protected function define_execution() {
 
-        restore_dbops::create_included_users($this->get_basepath(), $this->get_restoreid(), $this->get_setting_value('user_files'), $this->task->get_userid());
+        restore_dbops::create_included_users($this->get_basepath(), $this->get_restoreid(), $this->task->get_userid());
     }
 }
 
@@ -802,7 +797,14 @@ class restore_groups_structure_step extends restore_structure_step {
 
         $data->groupingid = $this->get_new_parentid('grouping'); // Use new parentid
         $data->groupid    = $this->get_mappingid('group', $data->groupid); // Get from mappings
-        $DB->insert_record('groupings_groups', $data);  // No need to set this mapping (no child info nor files)
+
+        $params = array();
+        $params['groupingid'] = $data->groupingid;
+        $params['groupid']    = $data->groupid;
+
+        if (!$DB->record_exists('groupings_groups', $params)) {
+            $DB->insert_record('groupings_groups', $data);  // No need to set this mapping (no child info nor files)
+        }
     }
 
     protected function after_execute() {
@@ -1099,7 +1101,6 @@ class restore_course_structure_step extends restore_structure_step {
         global $CFG, $DB;
 
         $data = (object)$data;
-        $oldid = $data->id; // We'll need this later
 
         $fullname  = $this->get_setting_value('course_fullname');
         $shortname = $this->get_setting_value('course_shortname');
@@ -1112,7 +1113,19 @@ class restore_course_structure_step extends restore_structure_step {
         $data->id = $this->get_courseid();
         $data->fullname = $fullname;
         $data->shortname= $shortname;
-        $data->idnumber = '';
+
+        $context = get_context_instance_by_id($this->task->get_contextid());
+        if (has_capability('moodle/course:changeidnumber', $context, $this->task->get_userid())) {
+            $data->idnumber = '';
+        } else {
+            unset($data->idnumber);
+        }
+
+        // Any empty value for course->hiddensections will lead to 0 (default, show collapsed).
+        // It has been reported that some old 1.9 courses may have it null leading to DB error. MDL-31532
+        if (empty($data->hiddensections)) {
+            $data->hiddensections = 0;
+        }
 
         // Only restrict modules if original course was and target site too for new courses
         $data->restrictmodules = $data->restrictmodules && !empty($CFG->restrictmodulesfor) && $CFG->restrictmodulesfor == 'all';
@@ -1739,15 +1752,20 @@ class restore_course_completion_structure_step extends restore_structure_step {
 
         $data->course = $this->get_courseid();
 
-        $params = array(
-            'course' => $data->course,
-            'criteriatype' => $data->criteriatype,
-            'method' => $data->method,
-            'value' => $data->value,
-        );
-        $DB->insert_record('course_completion_aggr_methd', $params);
+        // Only create the course_completion_aggr_methd records if
+        // the target course has not them defined. MDL-28180
+        if (!$DB->record_exists('course_completion_aggr_methd', array(
+                    'course' => $data->course,
+                    'criteriatype' => $data->criteriatype))) {
+            $params = array(
+                'course' => $data->course,
+                'criteriatype' => $data->criteriatype,
+                'method' => $data->method,
+                'value' => $data->value,
+            );
+            $DB->insert_record('course_completion_aggr_methd', $params);
+        }
     }
-
 }
 
 
@@ -2225,8 +2243,6 @@ class restore_module_structure_step extends restore_structure_step {
  *  - Activity includes completion info (file_exists)
  */
 class restore_userscompletion_structure_step extends restore_structure_step {
-    private $done = array();
-
     /**
      * To conditionally decide if this step must be executed
      * Note the "settings" conditions are evaluated in the
@@ -2270,15 +2286,14 @@ class restore_userscompletion_structure_step extends restore_structure_step {
         $data->userid = $this->get_mappingid('user', $data->userid);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
 
+        // Find the existing record
+        $existing = $DB->get_record('course_modules_completion', array(
+                'coursemoduleid' => $data->coursemoduleid,
+                'userid' => $data->userid), 'id, timemodified');
         // Check we didn't already insert one for this cmid and userid
         // (there aren't supposed to be duplicates in that field, but
         // it was possible until MDL-28021 was fixed).
-        $key = $data->coursemoduleid . ',' . $data->userid;
-        if (array_key_exists($key, $this->done)) {
-            // Find the existing record
-            $existing = $DB->get_record('course_modules_completion', array(
-                    'coursemoduleid' => $data->coursemoduleid,
-                    'userid' => $data->userid), 'id, timemodified');
+        if ($existing) {
             // Update it to these new values, but only if the time is newer
             if ($existing->timemodified < $data->timemodified) {
                 $data->id = $existing->id;
@@ -2287,16 +2302,7 @@ class restore_userscompletion_structure_step extends restore_structure_step {
         } else {
             // Normal entry where it doesn't exist already
             $DB->insert_record('course_modules_completion', $data);
-            // Remember this entry
-            $this->done[$key] = true;
         }
-    }
-
-    protected function after_execute() {
-        // This gets called once per activity (according to my testing).
-        // Clearing the array isn't strictly required, but avoids using
-        // unnecessary memory.
-        $this->done = array();
     }
 }
 

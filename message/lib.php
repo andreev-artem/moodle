@@ -814,6 +814,12 @@ function message_print_recent_conversations($user=null, $showicontext=false) {
 
     $conversations = message_get_recent_conversations($user);
 
+    // Attach context url information to create the "View this conversation" type links
+    foreach($conversations as $conversation) {
+        $conversation->contexturl = new moodle_url("/message/index.php?user2={$conversation->id}");
+        $conversation->contexturlname = get_string('thisconversation', 'message');
+    }
+
     $showotheruser = true;
     message_print_recent_messages_table($conversations, $user, $showotheruser, $showicontext);
 }
@@ -946,7 +952,7 @@ function message_add_contact($contactid, $blocked=0) {
 
     } else {
     /// new contact record
-        unset($contact);
+        $contact = new stdClass();
         $contact->userid = $USER->id;
         $contact->contactid = $contactid;
         $contact->blocked = $blocked;
@@ -1342,6 +1348,7 @@ function message_contact_link($userid, $linktype='add', $return=false, $script=n
     }
 
     if (empty($str->blockcontact)) {
+       $str = new stdClass();
        $str->blockcontact   =  get_string('blockcontact', 'message');
        $str->unblockcontact =  get_string('unblockcontact', 'message');
        $str->removecontact  =  get_string('removecontact', 'message');
@@ -1532,6 +1539,11 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
 ///
     global $CFG, $USER, $DB;
 
+    // If user is searching all messages check they are allowed to before doing anything else
+    if ($courseid == SITEID && !has_capability('moodle/site:readallmessages', get_context_instance(CONTEXT_SYSTEM))) {
+        print_error('accessdenied','admin');
+    }
+
     /// If no userid sent then assume current user
     if ($userid == 0) $userid = $USER->id;
 
@@ -1645,7 +1657,7 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
 
     /// The keys may be duplicated in $m_read and $m_unread so we can't
     /// do a simple concatenation
-    $message = array();
+    $messages = array();
     foreach ($m_read as $m) {
         $messages[] = $m;
     }
@@ -2011,8 +2023,10 @@ function message_post_message($userfrom, $userto, $message, $format) {
     $eventdata->subject          = get_string_manager()->get_string('unreadnewmessage', 'message', fullname($userfrom), $userto->lang);
 
     if ($format == FORMAT_HTML) {
-        $eventdata->fullmessage      = '';
         $eventdata->fullmessagehtml  = $message;
+        //some message processors may revert to sending plain text even if html is supplied
+        //so we keep both plain and html versions if we're intending to send html
+        $eventdata->fullmessage = html_to_text($eventdata->fullmessagehtml);
     } else {
         $eventdata->fullmessage      = $message;
         $eventdata->fullmessagehtml  = '';
@@ -2342,11 +2356,7 @@ function get_message_processor($type) {
  * @return object $processors object containing information on message processors
  */
 function get_message_output_default_preferences() {
-    $preferences = get_config('message');
-    if (!$preferences) {
-        $preferences = new stdClass();
-    }
-    return $preferences;
+    return get_config('message');
 }
 
 /**
@@ -2378,7 +2388,7 @@ function translate_message_default_setting($plugindefault, $processorname) {
 
     // Validate the value. It should not exceed the maximum size
     if (!is_int($plugindefault) || ($plugindefault > 0x0f)) {
-        $OUTPUT->notification(get_string('errortranslatingdefault', 'message'), 'notifyproblem');
+        debugging(get_string('errortranslatingdefault', 'message'));
         $plugindefault = $default;
     }
     // Use plugin default setting of 'permitted' is 0

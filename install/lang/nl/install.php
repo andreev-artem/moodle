@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'Admin-map';
 $string['availablelangs'] = 'Lijst met beschikbare talen';
 $string['chooselanguagehead'] = 'Kies een taal';
@@ -37,7 +39,7 @@ $string['cliinstallheader'] = 'Moodle {$a} command line installatieprogramma';
 $string['databasehost'] = 'Databank host:';
 $string['databasename'] = 'Datanbanknaam:';
 $string['databasetypehead'] = 'Kies databankdriver';
-$string['dataroot'] = 'Gegevens';
+$string['dataroot'] = 'Gegevensmap';
 $string['dbprefix'] = 'Tabelvoorvoegsel';
 $string['dirroot'] = 'Moodle-map';
 $string['environmenthead'] = 'Omgeving controleren ...';

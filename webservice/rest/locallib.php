@@ -39,7 +39,7 @@ class webservice_rest_server extends webservice_base_server {
     }
 
     /**
-     * This method parses the $_REQUEST superglobal and looks for
+     * This method parses the $_POST and $_GET superglobals and looks for
      * the following information:
      *  1/ user authentication - username+password or token (wsusername, wspassword and wstoken parameters)
      *  2/ function name (wsfunction parameter)
@@ -48,26 +48,30 @@ class webservice_rest_server extends webservice_base_server {
      * @return void
      */
     protected function parse_request() {
+
+        //Get GET and POST paramters
+        $methodvariables = array_merge($_GET,$_POST);
+
         if ($this->authmethod == WEBSERVICE_AUTHMETHOD_USERNAME) {
-            $this->username = isset($_REQUEST['wsusername']) ? $_REQUEST['wsusername'] : null;
-            unset($_REQUEST['wsusername']);
+            $this->username = isset($methodvariables['wsusername']) ? $methodvariables['wsusername'] : null;
+            unset($methodvariables['wsusername']);
 
-            $this->password = isset($_REQUEST['wspassword']) ? $_REQUEST['wspassword'] : null;
-            unset($_REQUEST['wspassword']);
+            $this->password = isset($methodvariables['wspassword']) ? $methodvariables['wspassword'] : null;
+            unset($methodvariables['wspassword']);
 
-            $this->functionname = isset($_REQUEST['wsfunction']) ? $_REQUEST['wsfunction'] : null;
-            unset($_REQUEST['wsfunction']);
+            $this->functionname = isset($methodvariables['wsfunction']) ? $methodvariables['wsfunction'] : null;
+            unset($methodvariables['wsfunction']);
 
-            $this->parameters = $_REQUEST;
+            $this->parameters = $methodvariables;
 
         } else {
-            $this->token = isset($_REQUEST['wstoken']) ? $_REQUEST['wstoken'] : null;
-            unset($_REQUEST['wstoken']);
+            $this->token = isset($methodvariables['wstoken']) ? $methodvariables['wstoken'] : null;
+            unset($methodvariables['wstoken']);
 
-            $this->functionname = isset($_REQUEST['wsfunction']) ? $_REQUEST['wsfunction'] : null;
-            unset($_REQUEST['wsfunction']);
+            $this->functionname = isset($methodvariables['wsfunction']) ? $methodvariables['wsfunction'] : null;
+            unset($methodvariables['wsfunction']);
 
-            $this->parameters = $_REQUEST;
+            $this->parameters = $methodvariables;
         }
     }
 
@@ -95,9 +99,9 @@ class webservice_rest_server extends webservice_base_server {
         $this->send_headers();
         $xml = '<?xml version="1.0" encoding="UTF-8" ?>'."\n";
         $xml .= '<EXCEPTION class="'.get_class($ex).'">'."\n";
-        $xml .= '<MESSAGE>'.htmlentities($ex->getMessage(), ENT_COMPAT, 'UTF-8').'</MESSAGE>'."\n";
+        $xml .= '<MESSAGE>'.htmlspecialchars($ex->getMessage(), ENT_COMPAT, 'UTF-8').'</MESSAGE>'."\n";
         if (debugging() and isset($ex->debuginfo)) {
-            $xml .= '<DEBUGINFO>'.htmlentities($ex->debuginfo, ENT_COMPAT, 'UTF-8').'</DEBUGINFO>'."\n";
+            $xml .= '<DEBUGINFO>'.htmlspecialchars($ex->debuginfo, ENT_COMPAT, 'UTF-8').'</DEBUGINFO>'."\n";
         }
         $xml .= '</EXCEPTION>'."\n";
         echo $xml;
@@ -134,7 +138,7 @@ class webservice_rest_server extends webservice_base_server {
             if (is_null($returns)) {
                 return '<VALUE null="null"/>'."\n";
             } else {
-                return '<VALUE>'.htmlentities($returns, ENT_COMPAT, 'UTF-8').'</VALUE>'."\n";
+                return '<VALUE>'.htmlspecialchars($returns, ENT_COMPAT, 'UTF-8').'</VALUE>'."\n";
             }
 
         } else if ($desc instanceof external_multiple_structure) {

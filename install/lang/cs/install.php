@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'Adresář se soubory pro správu serveru';
 $string['availablelangs'] = 'Dostupné jazykové balíčky';
 $string['chooselanguagehead'] = 'Vyberte jazyk';
@@ -38,6 +40,7 @@ $string['databasehost'] = 'Databázový server';
 $string['databasename'] = 'Název databáze';
 $string['databasetypehead'] = 'Vyberte databázový ovladač';
 $string['dataroot'] = 'Datový adresář';
+$string['datarootpermission'] = 'Přístupová práva k datovému adresáři';
 $string['dbprefix'] = 'Předpona tabulek';
 $string['dirroot'] = 'Adresář Moodlu';
 $string['environmenthead'] = 'Kontrola programového prostředí...';

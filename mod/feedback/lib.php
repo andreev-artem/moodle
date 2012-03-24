@@ -654,8 +654,8 @@ function feedback_set_events($feedback) {
     }
 
     // the open-event
-    if($feedback->timeopen > 0) {
-        $event = NULL;
+    if ($feedback->timeopen > 0) {
+        $event = new stdClass();
         $event->name         = get_string('start', 'feedback').' '.$feedback->name;
         $event->description  = format_module_intro('feedback', $feedback, $feedback->coursemodule);
         $event->courseid     = $feedback->course;
@@ -676,8 +676,8 @@ function feedback_set_events($feedback) {
     }
 
     // the close-event
-    if($feedback->timeclose > 0) {
-        $event = NULL;
+    if ($feedback->timeclose > 0) {
+        $event = new stdClass();
         $event->name         = get_string('stop', 'feedback').' '.$feedback->name;
         $event->description  = format_module_intro('feedback', $feedback, $feedback->coursemodule);
         $event->courseid     = $feedback->course;
@@ -879,8 +879,11 @@ function feedback_get_complete_users($cm, $group = false, $where = '', array $pa
     }
 
     $ufields = user_picture::fields('u');
-    $sql = 'SELECT DISTINCT '.$ufields.' FROM {user} u, {feedback_completed} c '.$fromgroup.'
-              WHERE '.$where.' anonymous_response = :anon AND u.id = c.userid AND c.feedback = :instance
+    $sql = 'SELECT DISTINCT '.$ufields.', c.timemodified as completed_timemodified
+            FROM {user} u, {feedback_completed} c '.$fromgroup.'
+            WHERE '.$where.' anonymous_response = :anon
+                AND u.id = c.userid
+                AND c.feedback = :instance
               '.$wheregroup.$sortsql;
 
     if ($startpage === false OR $pagecount === false) {

@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'Admin mapa';
 $string['availablelangs'] = 'Popis dostupnih jezika';
 $string['chooselanguagehead'] = 'Odaberite jezik';
@@ -38,6 +40,7 @@ $string['databasehost'] = 'Poslužitelj baze podataka (HOST)';
 $string['databasename'] = 'Naziv baze podataka';
 $string['databasetypehead'] = 'Odaberite vrstu baze podataka';
 $string['dataroot'] = 'Mapa s podacima';
+$string['datarootpermission'] = 'Ovlasti nad mapom s podacima';
 $string['dbprefix'] = 'Prefiks tablice';
 $string['dirroot'] = 'Moodle mapa';
 $string['environmenthead'] = 'Provjera okruženja vašeg poslužitelja ...';

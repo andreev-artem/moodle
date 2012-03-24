@@ -3027,7 +3027,7 @@ class admin_setting_bloglevel extends admin_setting_configselect {
      */
     public function write_setting($data) {
         global $DB, $CFG;
-        if ($data['bloglevel'] == 0) {
+        if ($data == 0) {
             $blogblocks = $DB->get_records_select('block', "name LIKE 'blog_%' AND visible = 1");
             foreach ($blogblocks as $block) {
                 $DB->set_field('block', 'visible', 0, array('id' => $block->id));
@@ -5787,6 +5787,15 @@ function admin_externalpage_setup($section, $extrabutton = '', array $extraurlpa
     $site = get_site();
     require_login();
 
+    if (!empty($options['pagelayout'])) {
+        // A specific page layout has been requested.
+        $PAGE->set_pagelayout($options['pagelayout']);
+    } else if ($section === 'upgradesettings') {
+        $PAGE->set_pagelayout('maintenance');
+    } else {
+        $PAGE->set_pagelayout('admin');
+    }
+
     $adminroot = admin_get_root(false, false); // settings not required for external pages
     $extpage = $adminroot->locate($section, true);
 
@@ -5799,15 +5808,6 @@ function admin_externalpage_setup($section, $extrabutton = '', array $extraurlpa
     if (!$extpage->check_access()) {
         print_error('accessdenied', 'admin');
         die;
-    }
-
-    if (!empty($options['pagelayout'])) {
-        // A specific page layout has been requested.
-        $PAGE->set_pagelayout($options['pagelayout']);
-    } else if ($section === 'upgradesettings') {
-        $PAGE->set_pagelayout('maintenance');
-    } else {
-        $PAGE->set_pagelayout('admin');
     }
 
     // $PAGE->set_extra_button($extrabutton); TODO
@@ -7551,7 +7551,7 @@ class admin_setting_managewebservicetokens extends admin_setting {
 
                 if (!is_siteadmin($token->userid) and
                         key_exists($token->userid, $usermissingcaps)) {
-                    $missingcapabilities = implode(',',
+                    $missingcapabilities = implode(', ',
                             $usermissingcaps[$token->userid]);
                     if (!empty($missingcapabilities)) {
                         $useratag .= html_writer::tag('div',

@@ -135,12 +135,11 @@ class grade_report_grader extends grade_report {
 
         $this->baseurl = new moodle_url('index.php', array('id' => $this->courseid));
 
-        $studentsperpage = $this->get_pref('studentsperpage');
-        if (!empty($studentsperpage)) {
-            $this->baseurl->params(array('perpage' => $studentsperpage, 'page' => $this->page));
+        if (!empty($this->page)) {
+            $this->baseurl->params(array('page' => $this->page));
         }
 
-        $this->pbarurl = new moodle_url('/grade/report/grader/index.php', array('id' => $this->courseid, 'perpage' => $studentsperpage));
+        $this->pbarurl = new moodle_url('/grade/report/grader/index.php', array('id' => $this->courseid));
 
         $this->setup_groups();
 
@@ -163,7 +162,7 @@ class grade_report_grader extends grade_report {
             $separategroups = true;
             $mygroups = groups_get_user_groups($this->course->id);
             $mygroups = $mygroups[0]; // ignore groupings
-            // reorder the groups fro better perf bellow
+            // reorder the groups fro better perf below
             $current = array_search($this->currentgroup, $mygroups);
             if ($current !== false) {
                 unset($mygroups[$current]);
@@ -632,7 +631,7 @@ class grade_report_grader extends grade_report {
             $usercell->scope = 'row';
 
             if ($showuserimage) {
-                $usercell->text = $OUTPUT->container($OUTPUT->user_picture($user), 'userpic');
+                $usercell->text = $OUTPUT->user_picture($user);
             }
 
             $usercell->text .= html_writer::link(new moodle_url('/user/view.php', array('id' => $user->id, 'course' => $this->course->id)), fullname($user));

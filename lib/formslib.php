@@ -139,6 +139,21 @@ abstract class moodleform {
      * @return object moodleform
      */
     function moodleform($action=null, $customdata=null, $method='post', $target='', $attributes=null, $editable=true) {
+        global $CFG;
+        if (empty($CFG->xmlstrictheaders)) {
+            // no standard mform in moodle should allow autocomplete with the exception of user signup
+            // this is valid attribute in html5, sorry, we have to ignore validation errors in legacy xhtml 1.0
+            if (empty($attributes)) {
+                $attributes = array('autocomplete'=>'off');
+            } else if (is_array($attributes)) {
+                $attributes['autocomplete'] = 'off';
+            } else {
+                if (strpos($attributes, 'autocomplete') === false) {
+                    $attributes .= ' autocomplete="off" ';
+                }
+            }
+        }
+
         if (empty($action)){
             $action = strip_querystring(qualified_me());
         }
@@ -340,6 +355,43 @@ abstract class moodleform {
     }
 
     /**
+     * Internal method. Validates filepicker and filemanager files if they are
+     * set as required fields. Also, sets the error message if encountered one.
+     *
+     * @return bool/array with errors
+     */
+    protected function validate_draft_files() {
+        global $USER;
+        $mform =& $this->_form;
+
+        $errors = array();
+        //Go through all the required elements and make sure you hit filepicker or
+        //filemanager element.
+        foreach ($mform->_rules as $elementname => $rules) {
+            $elementtype = $mform->getElementType($elementname);
+            //If element is of type filepicker then do validation
+            if (($elementtype == 'filepicker') || ($elementtype == 'filemanager')){
+                //Check if rule defined is required rule
+                foreach ($rules as $rule) {
+                    if ($rule['type'] == 'required') {
+                        $draftid = (int)$mform->getSubmitValue($elementname);
+                        $fs = get_file_storage();
+                        $context = get_context_instance(CONTEXT_USER, $USER->id);
+                        if (!$files = $fs->get_area_files($context->id, 'user', 'draft', $draftid, 'id DESC', false)) {
+                            $errors[$elementname] = $rule['message'];
+                        }
+                    }
+                }
+            }
+        }
+        if (empty($errors)) {
+            return true;
+        } else {
+            return $errors;
+        }
+    }
+
+    /**
      * Load in existing data as form defaults. Usually new entry defaults are stored directly in
      * form definition (new entry form); this function is used to load in data where values
      * already exist and data is being edited (edit entry form).
@@ -439,6 +491,16 @@ abstract class moodleform {
 
             $files = array();
             $file_val = $this->_validate_files($files);
+            //check draft files for validation and flag them if required files
+            //are not in draft area.
+            $draftfilevalue = $this->validate_draft_files();
+
+            if ($file_val !== true && $draftfilevalue !== true) {
+                $file_val = array_merge($file_val, $draftfilevalue);
+            } else if ($draftfilevalue !== true) {
+                $file_val = $draftfilevalue;
+            } //default is file_val, so no need to assign.
+
             if ($file_val !== true) {
                 if (!empty($file_val)) {
                     foreach ($file_val as $element=>$msg) {
@@ -949,7 +1011,12 @@ abstract class moodleform {
                             $params = array_merge(array($realelementname), $params);
                             call_user_func_array(array(&$mform, 'addRule'), $params);
                             break;
-
+                        case 'type' :
+                            //Type should be set only once
+                            if (!isset($mform->_types[$elementname])) {
+                                $mform->setType($elementname, $params);
+                            }
+                            break;
                     }
                 }
             }
@@ -973,7 +1040,12 @@ abstract class moodleform {
      * @param int    $originalValue The original general state of the checkboxes before the user first clicks this element
      */
     function add_checkbox_controller($groupid, $text = null, $attributes = null, $originalValue = 0) {
-        global $CFG;
+        global $CFG, $PAGE;
+
+        // Name of the controller button
+        $checkboxcontrollername = 'nosubmit_checkbox_controller' . $groupid;
+        $checkboxcontrollerparam = 'checkbox_controller'. $groupid;
+        $checkboxgroupclass = 'checkboxgroup'.$groupid;
 
         // Set the default text if none was specified
         if (empty($text)) {
@@ -981,54 +1053,43 @@ abstract class moodleform {
         }
 
         $mform = $this->_form;
-        $select_value = optional_param('checkbox_controller'. $groupid, null, PARAM_INT);
+        $select_value = optional_param($checkboxcontrollerparam, null, PARAM_INT);
+        $contollerbutton = optional_param($checkboxcontrollername, null, PARAM_ALPHAEXT);
 
-        if ($select_value == 0 || is_null($select_value)) {
-            $new_select_value = 1;
-        } else {
-            $new_select_value = 0;
+        $new_select_value = $select_value;
+        if (is_null($select_value)) {
+            $new_select_value = $originalValue;
+        } else if (!is_null($contollerbutton)) {
+            $new_select_value = (int) !$select_value;
+        }
+        // set checkbox state depending on orignal/submitted value by controoler button
+        if (!is_null($contollerbutton) || is_null($select_value)) {
+            foreach ($mform->_elements as $element) {
+                if (($element instanceof MoodleQuickForm_advcheckbox) &&
+                    $element->getAttribute('class') == $checkboxgroupclass) {
+                    $mform->setConstants(array($element->getName() => $new_select_value));
+                }
+            }
         }
 
-        $mform->addElement('hidden', "checkbox_controller$groupid");
-        $mform->setType("checkbox_controller$groupid", PARAM_INT);
-        $mform->setConstants(array("checkbox_controller$groupid" => $new_select_value));
+        $mform->addElement('hidden', $checkboxcontrollerparam, $new_select_value, array('id' => "id_".$checkboxcontrollerparam));
+        $mform->setType($checkboxcontrollerparam, PARAM_INT);
+        $mform->setConstants(array($checkboxcontrollerparam => $new_select_value));
 
-        $checkbox_controller_name = 'nosubmit_checkbox_controller' . $groupid;
-        $mform->registerNoSubmitButton($checkbox_controller_name);
+        $PAGE->requires->yui_module('moodle-form-checkboxcontroller', 'M.form.checkboxcontroller',
+                array(
+                    array('groupid' => $groupid,
+                        'checkboxclass' => $checkboxgroupclass,
+                        'checkboxcontroller' => $checkboxcontrollerparam,
+                        'controllerbutton' => $checkboxcontrollername)
+                    )
+                );
 
-        // Prepare Javascript for submit element
-        $js = "\n//<![CDATA[\n";
-        if (!defined('HTML_QUICKFORM_CHECKBOXCONTROLLER_EXISTS')) {
-            $js .= <<<EOS
-function html_quickform_toggle_checkboxes(group) {
-    var checkboxes = document.getElementsByClassName('checkboxgroup' + group);
-    var newvalue = false;
-    var global = eval('html_quickform_checkboxgroup' + group + ';');
-    if (global == 1) {
-        eval('html_quickform_checkboxgroup' + group + ' = 0;');
-        newvalue = '';
-    } else {
-        eval('html_quickform_checkboxgroup' + group + ' = 1;');
-        newvalue = 'checked';
-    }
-
-    for (i = 0; i < checkboxes.length; i++) {
-        checkboxes[i].checked = newvalue;
-    }
-}
-EOS;
-            define('HTML_QUICKFORM_CHECKBOXCONTROLLER_EXISTS', true);
-        }
-        $js .= "\nvar html_quickform_checkboxgroup$groupid=$originalValue;\n";
-
-        $js .= "//]]>\n";
-
-        require_once("$CFG->libdir/form/submitlink.php");
-        $submitlink = new MoodleQuickForm_submitlink($checkbox_controller_name, $attributes);
-        $submitlink->_js = $js;
-        $submitlink->_onclick = "html_quickform_toggle_checkboxes($groupid); return false;";
+        require_once("$CFG->libdir/form/submit.php");
+        $submitlink = new MoodleQuickForm_submit($checkboxcontrollername, $attributes);
         $mform->addElement($submitlink);
-        $mform->setDefault($checkbox_controller_name, $text);
+        $mform->registerNoSubmitButton($checkboxcontrollername);
+        $mform->setDefault($checkboxcontrollername, $text);
     }
 
     /**
@@ -1916,7 +1977,11 @@ function validate_' . $this->_formName . '(frm) {
         } else if (is_a($element, 'HTML_QuickForm_hidden')) {
             return array();
 
-        } else if (method_exists($element, 'getPrivateName')) {
+        } else if (method_exists($element, 'getPrivateName') &&
+                !($element instanceof HTML_QuickForm_advcheckbox)) {
+            // The advcheckbox element implements a method called getPrivateName,
+            // but in a way that is not compatible with the generic API, so we
+            // have to explicitly exclude it.
             return array($element->getPrivateName());
 
         } else {
@@ -2133,9 +2198,9 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
         // switch next two lines for ol li containers for form items.
         //        $this->_elementTemplates=array('default'=>"\n\t\t".'<li class="fitem"><label>{label}{help}<!-- BEGIN required -->{req}<!-- END required --></label><div class="qfelement<!-- BEGIN error --> error<!-- END error --> {type}"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</div></li>');
         $this->_elementTemplates = array(
-        'default'=>"\n\t\t".'<div class="fitem {advanced}<!-- BEGIN required --> required<!-- END required -->"><div class="fitemtitle"><label>{label}<!-- BEGIN required -->{req}<!-- END required -->{advancedimg} {help}</label></div><div class="felement {type}<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</div></div>',
+        'default'=>"\n\t\t".'<div id="{id}" class="fitem {advanced}<!-- BEGIN required --> required<!-- END required --> fitem_{type}"><div class="fitemtitle"><label>{label}<!-- BEGIN required -->{req}<!-- END required -->{advancedimg} {help}</label></div><div class="felement {type}<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</div></div>',
 
-        'fieldset'=>"\n\t\t".'<div class="fitem {advanced}<!-- BEGIN required --> required<!-- END required -->"><div class="fitemtitle"><div class="fgrouplabel"><label>{label}<!-- BEGIN required -->{req}<!-- END required -->{advancedimg} {help}</label></div></div><fieldset class="felement {type}<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</fieldset></div>',
+        'fieldset'=>"\n\t\t".'<div id="{id}" class="fitem {advanced}<!-- BEGIN required --> required<!-- END required --> fitem_{type}"><div class="fitemtitle"><div class="fgrouplabel"><label>{label}<!-- BEGIN required -->{req}<!-- END required -->{advancedimg} {help}</label></div></div><fieldset class="felement {type}<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</fieldset></div>',
 
         'static'=>"\n\t\t".'<div class="fitem {advanced}"><div class="fitemtitle"><div class="fstaticlabel"><label>{label}<!-- BEGIN required -->{req}<!-- END required -->{advancedimg} {help}</label></div></div><div class="felement fstatic <!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}&nbsp;</div></div>',
 
@@ -2180,6 +2245,9 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
      * @param mixed $error
      */
     function startGroup(&$group, $required, $error){
+        // Make sure the element has an id.
+        $group->_generateId();
+
         if (method_exists($group, 'getElementTemplateType')){
             $html = $this->_elementTemplates[$group->getElementTemplateType()];
         }else{
@@ -2203,6 +2271,7 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
         }else{
             $html =str_replace('{help}', '', $html);
         }
+        $html =str_replace('{id}', 'fgroup_' . $group->getAttribute('id'), $html);
         $html =str_replace('{name}', $group->getName(), $html);
         $html =str_replace('{type}', 'fgroup', $html);
 
@@ -2224,17 +2293,8 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
      * @param mixed $error
      */
     function renderElement(&$element, $required, $error){
-        //manipulate id of all elements before rendering
-        if (!is_null($element->getAttribute('id'))) {
-            $id = $element->getAttribute('id');
-        } else {
-            $id = $element->getName();
-        }
-        //strip qf_ prefix and replace '[' with '_' and strip ']'
-        $id = preg_replace(array('/^qf_|\]/', '/\[/'), array('', '_'), $id);
-        if (strpos($id, 'id_') !== 0){
-            $element->updateAttributes(array('id'=>'id_'.$id));
-        }
+        // Make sure the element has an id.
+        $element->_generateId();
 
         //adding stuff to place holders in template
         //check if this is a group element first
@@ -2262,6 +2322,7 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
         } else {
             $html =str_replace('{advancedimg}', '', $html);
         }
+        $html =str_replace('{id}', 'fitem_' . $element->getAttribute('id'), $html);
         $html =str_replace('{type}', 'f'.$element->getType(), $html);
         $html =str_replace('{name}', $element->getName(), $html);
         if (method_exists($element, 'getHelpButton')){
@@ -2293,7 +2354,7 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
         if (!$form->isFrozen()) {
             $args = $form->getLockOptionObject();
             if (count($args[1]) > 0) {
-                $PAGE->requires->js_init_call('M.form.initFormDependencies', $args, false, moodleform::get_js_module());
+                $PAGE->requires->js_init_call('M.form.initFormDependencies', $args, true, moodleform::get_js_module());
             }
         }
     }
@@ -2378,6 +2439,10 @@ class MoodleQuickForm_Rule_Required extends HTML_QuickForm_Rule {
         global $CFG;
         if (is_array($value) && array_key_exists('text', $value)) {
             $value = $value['text'];
+        }
+        if (is_array($value)) {
+            // nasty guess - there has to be something in the array, hopefully nobody invents arrays in arrays
+            $value = implode('', $value);
         }
         $stripvalues = array(
             '#</?(?!img|canvas|hr).*?>#im', // all tags except img, canvas and hr

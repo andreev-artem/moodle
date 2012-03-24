@@ -189,6 +189,19 @@ if ($id) {
 
     // Getting subwiki instance. If it does not exists, redirect to create page
     if (!$subwiki = wiki_get_subwiki_by_group($wiki->id, $gid, $uid)) {
+        $context = get_context_instance(CONTEXT_MODULE, $cm->id);
+
+        $modeanduser = $wiki->wikimode == 'individual' && $uid != $USER->id;
+        $modeandgroupmember = $wiki->wikimode == 'collaborative' && !groups_is_member($gid);
+
+        $manage = has_capability('mod/wiki:managewiki', $context);
+        $edit = has_capability('mod/wiki:editpage', $context);
+        $manageandedit = $manage && $edit;
+
+        if ($groupmode == VISIBLEGROUPS and ($modeanduser || $modeandgroupmember) and !$manageandedit) {
+            print_error('nocontent','wiki');
+        }
+
         $params = array('wid' => $wiki->id, 'gid' => $gid, 'uid' => $uid, 'title' => $title);
         $url = new moodle_url('/mod/wiki/create.php', $params);
         redirect($url);
@@ -256,8 +269,6 @@ require_login($course, true, $cm);
 $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 require_capability('mod/wiki:viewpage', $context);
 
-add_to_log($course->id, 'wiki', 'view', 'view.php?id=' . $cm->id, $wiki->id);
-
 // Update 'viewed' state if required by completion system
 require_once($CFG->libdir . '/completionlib.php');
 $completion = new completion_info($course);
@@ -280,6 +291,14 @@ if ($id) {
 
 $wikipage->set_gid($currentgroup);
 $wikipage->set_page($page);
+
+if($pageid) {
+    add_to_log($course->id, 'wiki', 'view', "view.php?pageid=".$pageid, $pageid, $cm->id);
+} else if($id) {
+    add_to_log($course->id, 'wiki', 'view', "view.php?id=".$id, $id, $cm->id);
+} else if($wid && $title) {
+    add_to_log($course->id, 'wiki', 'view', "view.php?wid=".$wid."&title=".$title, $wid, $cm->id);
+}
 
 $wikipage->print_header();
 $wikipage->print_content();

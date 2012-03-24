@@ -236,6 +236,7 @@ $string['clickhelpiconformoreinfo'] = '... continues ... Click on the help icon 
 $string['clickhere'] = 'Click here ...';
 $string['clicktohideshow'] = 'Click to expand or collapse';
 $string['clicktochange'] = 'Click to change';
+$string['clicktochangeinbrackets'] = '{$a} (Click to change)';
 $string['closewindow'] = 'Close this window';
 $string['collapseall'] = 'Collapse all';
 $string['commentincontext'] = 'Find this comment in context';
@@ -530,6 +531,7 @@ $string['emaildisable'] = 'This email address is disabled';
 $string['emaildisableclick'] = 'Click here to disable all email from being sent to this address';
 $string['emaildisplay'] = 'Email display';
 $string['emaildisplaycourse'] = 'Allow only other course members to see my email address';
+$string['emaildisplayhidden'] = 'Email hidden';
 $string['emaildisplayno'] = 'Hide my email address from everyone';
 $string['emaildisplayyes'] = 'Allow everyone to see my email address';
 $string['emailenable'] = 'This email address is enabled';
@@ -672,6 +674,7 @@ $string['followingoptional'] = 'The following items are optional';
 $string['followingrequired'] = 'The following items are required';
 $string['force'] = 'Force';
 $string['forcedmode'] = 'forced mode';
+$string['forcedmodeinbrackets'] = '{$a} (forced mode)';
 $string['forcelanguage'] = 'Force language';
 $string['forceno'] = 'Do not force';
 $string['forcepasswordchange'] = 'Force password change';
@@ -1775,9 +1778,7 @@ $string['withoutuserdata'] = 'without user data';
 $string['withselectedusers'] = 'With selected users...';
 $string['withselectedusers_help'] = '* Send message - For sending a message to one or more participants
 * Add a new note - For adding a note to a selected participant
-* Add a common note - For adding the same note to more than one participant
-* Extend enrolment (individual) - For extending a selected student\'s access to the course, even when an enrolment period is set
-* Extend enrolment (common) - For extending more than one student\'s access to the course by the same amount';
+* Add a common note - For adding the same note to more than one participant';
 $string['withuserdata'] = 'with user data';
 $string['wordforstudent'] = 'Your word for Student';
 $string['wordforstudenteg'] = 'eg Student, Participant etc';

@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'Adminディレクトリ';
 $string['availablelangs'] = '利用可能な言語一覧';
 $string['chooselanguagehead'] = '言語を選択してください。';
@@ -38,6 +40,7 @@ $string['databasehost'] = 'データベースホスト :';
 $string['databasename'] = 'データベース名 :';
 $string['databasetypehead'] = 'データベースドライバを選択する';
 $string['dataroot'] = 'データディレクトリ';
+$string['datarootpermission'] = 'データディレクトリパーミッション';
 $string['dbprefix'] = 'テーブル接頭辞';
 $string['dirroot'] = 'Moodleディレクトリ';
 $string['environmenthead'] = 'あなたの環境を確認しています ...';

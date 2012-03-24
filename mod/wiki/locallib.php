@@ -490,7 +490,7 @@ function wiki_get_orphaned_pages($swid) {
             AND s.id = ?
             AND w.id = s.wikiid
             AND p.title != w.firstpagetitle
-            AND p.id NOT IN (SELECT topageid FROM {wiki_links} WHERE subwikiid = ?);";
+            AND p.id NOT IN (SELECT topageid FROM {wiki_links} WHERE subwikiid = ?)";
 
     return $DB->get_records_sql($sql, array($swid, $swid, $swid));
 }
@@ -899,7 +899,7 @@ function wiki_user_can_edit($subwiki) {
             // There is one wiki per group.
             //
             // Only members of subwiki group could edit that wiki
-            if ($subwiki->groupid == groups_get_activity_group($cm)) {
+            if (groups_is_member($subwiki->groupid)) {
                 // Only edit capability needed
                 return has_capability('mod/wiki:editpage', $context);
             } else { // User is not part of that group

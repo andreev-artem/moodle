@@ -309,6 +309,7 @@ class grade_report_user extends grade_report {
         $hidden = '';
         $excluded = '';
         $class = '';
+        $classfeedback = '';
 
         // If this is a hidden grade category, hide it completely from the user
         if ($type == 'category' && $grade_object->is_hidden() && !$this->canviewhidden && (
@@ -365,6 +366,10 @@ class grade_report_user extends grade_report {
                 /// Actual Grade
                 $gradeval = $grade_grade->finalgrade;
 
+                if ($this->showfeedback) {
+                    // Copy $class before appending itemcenter as feedback should not be centered
+                    $classfeedback = $class;
+                }
                 $class .= " itemcenter ";
                 if ($this->showweight) {
                     $data['weight']['class'] = $class;
@@ -474,13 +479,13 @@ class grade_report_user extends grade_report {
                 // Feedback
                 if ($this->showfeedback) {
                     if ($grade_grade->overridden > 0 AND ($type == 'categoryitem' OR $type == 'courseitem')) {
-                    $data['feedback']['class'] = $class.' feedbacktext';
+                    $data['feedback']['class'] = $classfeedback.' feedbacktext';
                         $data['feedback']['content'] = get_string('overridden', 'grades').': ' . format_text($grade_grade->feedback, $grade_grade->feedbackformat);
                     } else if (empty($grade_grade->feedback) or (!$this->canviewhidden and $grade_grade->is_hidden())) {
-                        $data['feedback']['class'] = $class.' feedbacktext';
+                        $data['feedback']['class'] = $classfeedback.' feedbacktext';
                         $data['feedback']['content'] = '&nbsp;';
                     } else {
-                        $data['feedback']['class'] = $class.' feedbacktext';
+                        $data['feedback']['class'] = $classfeedback.' feedbacktext';
                         $data['feedback']['content'] = format_text($grade_grade->feedback, $grade_grade->feedbackformat);
                     }
                 }
@@ -650,7 +655,7 @@ class grade_report_user extends grade_report {
             // Then left join with grade_grades and look for rows with null final grade (which includes grade items with no grade_grade)
             $sql = "SELECT gi.id, COUNT(u.id) AS count
                       FROM {grade_items} gi
-                      JOIN {user} u
+                      JOIN {user} u ON u.deleted = 0
                       JOIN ($enrolledsql) je ON je.id = u.id
                       JOIN (
                                SELECT DISTINCT ra.userid
@@ -659,10 +664,9 @@ class grade_report_user extends grade_report {
                                   AND ra.contextid " . get_related_contexts_string($this->context) . "
                            ) rainner ON rainner.userid = u.id
                       LEFT JOIN {grade_grades} gg
-                           ON (gg.itemid = gi.id AND gg.userid = u.id AND gg.finalgrade IS NOT NULL AND gg.hidden = 0)
+                             ON (gg.itemid = gi.id AND gg.userid = u.id AND gg.finalgrade IS NOT NULL AND gg.hidden = 0)
                       $groupsql
                      WHERE gi.courseid = :courseid
-                           AND u.deleted = 0
                            AND gg.finalgrade IS NULL
                            $groupwheresql
                   GROUP BY gi.id";

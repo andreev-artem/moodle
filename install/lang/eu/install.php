@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'Admin direktorioa';
 $string['availablelangs'] = 'Hizkuntza eskuragarrien zerrenda';
 $string['chooselanguagehead'] = 'Aukeratu hizkuntza bat';
@@ -35,8 +37,9 @@ $string['chooselanguagesub'] = 'Instalazio-prozesurako hizkuntza aukeratu, mesed
 $string['databasehost'] = 'Datu-basearen ostalaria';
 $string['databasename'] = 'Datu-basearen izena';
 $string['dataroot'] = 'Datu-direktorioa';
+$string['datarootpermission'] = 'Datu-direktorioen baimena';
 $string['dbprefix'] = 'Taulen aurrizkia';
-$string['dirroot'] = 'Moodle-ren direktorioa';
+$string['dirroot'] = 'Moodle direktorioa';
 $string['environmenthead'] = 'Zure ingurunea egiaztatzen...';
 $string['errorsinenvironment'] = 'Kale egin du ingurunearen egiaztatzeak!';
 $string['installation'] = 'Instalazioa';

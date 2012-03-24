@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['clianswerno'] = 'n';
 $string['cliansweryes'] = 's';
 $string['cliincorrectvalueerror'] = 'Errore, il valore "{$a->value}" non è corretto per "{$a->option}"';
@@ -38,5 +40,5 @@ $string['cliunknowoption'] = 'Opzioni non riconosciute:
 {$a}
 . Per favore utilizza l\'opzione --help.';
 $string['cliyesnoprompt'] = 'inserisci s (per Si) o n (per No)';
-$string['environmentrequireinstall'] = 'l\'installazione e attivazione è necessaria';
+$string['environmentrequireinstall'] = 'E\' necessaria l\'installazione e attivazione';
 $string['environmentrequireversion'] = 'Versione minima necessaria: {$a->needed}. Versione in uso: {$a->current}';

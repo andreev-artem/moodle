@@ -90,6 +90,9 @@ if($group === 0 && $course->groupmode == SEPARATEGROUPS) {
  * Load data
  */
 
+// Retrieve course_module data for all modules in the course
+$modinfo = get_fast_modinfo($course);
+
 // Get criteria for course
 $completion = new completion_info($course);
 
@@ -333,11 +336,12 @@ if(!$csv) {
         exit;
     }
 
+    print '<div id="completion-progress-wrapper" class="no-overflow">';
     print '<table id="completion-progress" class="generaltable flexible boxaligncenter completionreport" style="text-align: left" cellpadding="5" border="1">';
 
     // Print criteria group names
     print PHP_EOL.'<tr style="vertical-align: top">';
-    print '<th scope="row" class="rowheader">'.get_string('criteriagroup', 'completion').'</th>';
+    print '<th scope="row" colspan="'.($idnumbers ? 2 : 1).'" class="rowheader">'.get_string('criteriagroup', 'completion').'</th>';
 
     $current_group = false;
     $col_count = 0;
@@ -371,7 +375,7 @@ if(!$csv) {
 
     // Print aggregation methods
     print PHP_EOL.'<tr style="vertical-align: top">';
-    print '<th scope="row" class="rowheader">'.get_string('aggregationmethod', 'completion').'</th>';
+    print '<th scope="row" colspan="'.($idnumbers ? 2: 1).'" class="rowheader">'.get_string('aggregationmethod', 'completion').'</th>';
 
     $current_group = false;
     $col_count = 0;
@@ -430,7 +434,7 @@ if(!$csv) {
     if (COMPLETION_REPORT_COL_TITLES) {
 
         print PHP_EOL.'<tr>';
-        print '<th scope="row" class="rowheader">'.get_string('criteria', 'completion').'</th>';
+        print '<th scope="row" colspan="'.($idnumbers ? 2 : 1).'" class="rowheader">'.get_string('criteria', 'completion').'</th>';
 
         foreach ($criteria as $criterion) {
             // Get criteria details
@@ -486,13 +490,10 @@ if(!$csv) {
         switch ($criterion->criteriatype) {
 
             case COMPLETION_CRITERIA_TYPE_ACTIVITY:
-                // Load activity
-                $activity = $criterion->get_mod_instance();
-
                 // Display icon
                 $icon = $OUTPUT->pix_url('icon', $criterion->module);
                 $iconlink = $CFG->wwwroot.'/mod/'.$criterion->module.'/view.php?id='.$criterion->moduleinstance;
-                $icontitle = $activity->name;
+                $icontitle = $modinfo->cms[$criterion->moduleinstance]->name;
                 $iconalt = get_string('modulename', $criterion->module);
                 break;
 
@@ -574,10 +575,7 @@ foreach ($progress as $user) {
         if ($criterion->criteriatype == COMPLETION_CRITERIA_TYPE_ACTIVITY) {
 
             // Load activity
-            $mod = $criterion->get_mod_instance();
-            $activity = $DB->get_record('course_modules', array('id' => $criterion->moduleinstance));
-            $activity->name = $mod->name;
-
+            $activity = $modinfo->cms[$criterion->moduleinstance];
 
             // Get progress information and state
             if(array_key_exists($activity->id,$user->progress)) {
@@ -704,6 +702,7 @@ if($csv) {
     exit;
 }
 print '</table>';
+print '</div>';
 print $pagingbar;
 
 print '<ul class="progress-actions"><li><a href="index.php?course='.$course->id.

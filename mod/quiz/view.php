@@ -79,11 +79,6 @@ $completion->set_module_viewed($cm);
 // Initialize $PAGE, compute blocks
 $PAGE->set_url('/mod/quiz/view.php', array('id' => $cm->id));
 
-$edit = optional_param('edit', -1, PARAM_BOOL);
-if ($edit != -1 && $PAGE->user_allowed_editing()) {
-    $USER->editing = $edit;
-}
-
 // Update the quiz with overrides for the current user
 $quiz = quiz_update_effective_access($quiz, $USER->id);
 
@@ -98,7 +93,16 @@ if ($unfinishedattempt = quiz_get_user_attempt_unfinished($quiz->id, $USER->id))
 $numattempts = count($attempts);
 
 // Work out the final grade, checking whether it was overridden in the gradebook.
-$mygrade = quiz_get_best_grade($quiz, $USER->id);
+if (!$canpreview) {
+    $mygrade = quiz_get_best_grade($quiz, $USER->id);
+} else if ($lastfinishedattempt) {
+    // Users who can preview the quiz don't get a proper grade, so work out a
+    // plausible value to display instead, so the page looks right.
+    $mygrade = quiz_rescale_grade($lastfinishedattempt->sumgrades, $quiz, false);
+} else {
+    $mygrade = null;
+}
+
 $mygradeoverridden = false;
 $gradebookfeedback = '';
 
@@ -143,7 +147,7 @@ if ($attempts) {
     $viewobj->gradecolumn = $someoptions->marks >= question_display_options::MARK_AND_MAX &&
             quiz_has_grades($quiz);
     $viewobj->markcolumn = $viewobj->gradecolumn && ($quiz->grade != $quiz->sumgrades);
-    $viewobj->overallstats = $alloptions->marks >= question_display_options::MARK_AND_MAX;
+    $viewobj->overallstats = $lastfinishedattempt && $alloptions->marks >= question_display_options::MARK_AND_MAX;
 
     $viewobj->feedbackcolumn = quiz_has_feedback($quiz) && $alloptions->overallfeedback;
 } else {

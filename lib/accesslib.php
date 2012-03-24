@@ -368,7 +368,7 @@ function get_role_context_caps($roleid, $context) {
         }
     }
 
-    // now go through the contexts bellow given context
+    // now go through the contexts below given context
     $searchcontexts = array_keys(get_child_contexts($context));
     foreach ($searchcontexts as $cid) {
         if ($capabilities = $DB->get_records('role_capabilities', array('roleid'=>$roleid, 'contextid'=>$cid))) {
@@ -3748,13 +3748,13 @@ function fetch_context_capabilities($context) {
                            OR name $extra";
         break;
 
-        case CONTEXT_COURSECAT: // course category context and bellow
+        case CONTEXT_COURSECAT: // course category context and below
             $SQL = "SELECT *
                       FROM {capabilities}
                      WHERE contextlevel IN (".CONTEXT_COURSECAT.",".CONTEXT_COURSE.",".CONTEXT_MODULE.",".CONTEXT_BLOCK.")";
         break;
 
-        case CONTEXT_COURSE: // course context and bellow
+        case CONTEXT_COURSE: // course context and below
             $SQL = "SELECT *
                       FROM {capabilities}
                      WHERE contextlevel IN (".CONTEXT_COURSE.",".CONTEXT_MODULE.",".CONTEXT_BLOCK.")";
@@ -5205,7 +5205,7 @@ function get_role_users($roleid, $context, $parent = false, $fields = '',
 
     if (empty($fields)) {
         $fields = 'u.id, u.confirmed, u.username, u.firstname, u.lastname, '.
-                  'u.maildisplay, u.mailformat, u.maildigest, u.email, u.city, '.
+                  'u.maildisplay, u.mailformat, u.maildigest, u.email, u.emailstop, u.city, '.
                   'u.country, u.picture, u.idnumber, u.department, u.institution, '.
                   'u.lang, u.timezone, u.lastaccess, u.mnethostid, r.name AS rolename, r.sortorder';
     }

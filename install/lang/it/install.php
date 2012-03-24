@@ -28,6 +28,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 $string['admindirname'] = 'Cartella Admin';
 $string['availablelangs'] = 'Elenco delle lingue disponibili:';
 $string['chooselanguagehead'] = 'Scegli la lingua';
@@ -38,6 +40,7 @@ $string['databasehost'] = 'Database host:';
 $string['databasename'] = 'Nome del Database';
 $string['databasetypehead'] = 'Scegli un database driver';
 $string['dataroot'] = 'Cartella dei dati';
+$string['datarootpermission'] = 'Permessi cartella dei dati';
 $string['dbprefix'] = 'Prefisso tabelle';
 $string['dirroot'] = 'Cartella di Moodle';
 $string['environmenthead'] = 'Verifica del vostro ambiente...';
