@@ -19,3 +19,6 @@
 [submodule "admin/report/addenrol"]
 	path = admin/report/addenrol
 	url = git@github.com:andreev-artem/moodle_admin_report_addenrol.git
+[submodule "blocks/course_results"]
+	path = blocks/course_results
+	url = git@github.com:andreev-artem/moodle_blocks_course_results.git
