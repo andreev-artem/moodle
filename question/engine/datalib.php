@@ -108,9 +108,9 @@ class question_engine_data_mapper {
         $record->minfraction = $qa->get_min_fraction();
         $record->flagged = $qa->is_flagged();
         $record->questionsummary = $qa->get_question_summary();
-        if (textlib_get_instance()->strlen($record->questionsummary) > question_bank::MAX_SUMMARY_LENGTH) {
+        if (textlib::strlen($record->questionsummary) > question_bank::MAX_SUMMARY_LENGTH) {
             // It seems some people write very long quesions! MDL-30760
-            $record->questionsummary = textlib_get_instance()->substr($record->questionsummary,
+            $record->questionsummary = textlib::substr($record->questionsummary,
                     0, question_bank::MAX_SUMMARY_LENGTH - 3) . '...';
         }
         $record->rightanswer = $qa->get_right_answer_summary();
@@ -265,7 +265,7 @@ SELECT
     qasd.name,
     qasd.value
 
-FROM      {question_attempts           qa
+FROM      {question_attempts}          qa
 JOIN      {question_usages}            quba ON quba.id               = qa.questionusageid
 LEFT JOIN {question_attempt_steps}     qas  ON qas.questionattemptid = qa.id
 LEFT JOIN {question_attempt_step_data} qasd ON qasd.attemptstepid    = qas.id
@@ -281,7 +281,7 @@ ORDER BY
             throw new coding_exception('Failed to load question_attempt ' . $questionattemptid);
         }
 
-        $record = current($records);
+        $record = $records->current();
         $qa = question_attempt::load_from_records($records, $questionattemptid,
                 new question_usage_null_observer(), $record->preferredbehaviour);
         $records->close();

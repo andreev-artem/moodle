@@ -197,7 +197,7 @@ class grade_report_grader extends grade_report {
             }
 
             if (!$gradeitem = grade_item::fetch(array('id'=>$itemid, 'courseid'=>$this->courseid))) { // we must verify course id here!
-                print_error('invalidgradeitmeid');
+                print_error('invalidgradeitemid');
             }
 
             // Pre-process grade
@@ -339,7 +339,7 @@ class grade_report_grader extends grade_report {
         list($enrolledsql, $enrolledparams) = get_enrolled_sql($this->context);
 
         //fields we need from the user table
-        $userfields = user_picture::fields('u', array('idnumber'));
+        $userfields = user_picture::fields('u', get_extra_user_fields($this->context));
 
         $sortjoin = $sort = $params = null;
 
@@ -555,23 +555,20 @@ class grade_report_grader extends grade_report {
         $rows = array();
 
         $showuserimage = $this->get_pref('showuserimage');
-        $showuseridnumber = $this->get_pref('showuseridnumber');
         $fixedstudents = $this->is_fixed_students();
 
         $strfeedback  = $this->get_lang_string("feedback");
         $strgrade     = $this->get_lang_string('grade');
 
-        $arrows = $this->get_sort_arrows();
+        $extrafields = get_extra_user_fields($this->context);
+
+        $arrows = $this->get_sort_arrows($extrafields);
 
         $colspan = 1;
-
         if (has_capability('gradereport/'.$CFG->grade_profilereport.':view', $this->context)) {
             $colspan++;
         }
-
-        if ($showuseridnumber) {
-            $colspan++;
-        }
+        $colspan += count($extrafields);
 
         $levels = count($this->gtree->levels) - 1;
 
@@ -599,17 +596,14 @@ class grade_report_grader extends grade_report {
 
         $headerrow->cells[] = $studentheader;
 
-        if ($showuseridnumber) {
-            // TODO: weird, this is not used anywhere
-            $sortidnumberlink = html_writer::link(new moodle_url($this->baseurl, array('sortitemid'=>'idnumber')), get_string('idnumber'));
+        foreach ($extrafields as $field) {
+            $fieldheader = new html_table_cell();
+            $fieldheader->attributes['class'] = 'header userfield user' . $field;
+            $fieldheader->scope = 'col';
+            $fieldheader->header = true;
+            $fieldheader->text = $arrows[$field];
 
-            $idnumberheader = new html_table_cell();
-            $idnumberheader->attributes['class'] = 'header useridnumber';
-            $idnumberheader->scope = 'col';
-            $idnumberheader->header = true;
-            $idnumberheader->text = $arrows['idnumber'];
-
-            $headerrow->cells[] = $idnumberheader;
+            $headerrow->cells[] = $fieldheader;
         }
 
         $rows[] = $headerrow;
@@ -660,13 +654,13 @@ class grade_report_grader extends grade_report {
                 $userrow->cells[] = $userreportcell;
             }
 
-            if ($showuseridnumber) {
-                $idnumbercell = new html_table_cell();
-                $idnumbercell->attributes['class'] = 'header useridnumber';
-                $idnumbercell->header = true;
-                $idnumbercell->scope = 'row';
-                $idnumbercell->text = $user->idnumber;
-                $userrow->cells[] = $idnumbercell;
+            foreach ($extrafields as $field) {
+                $fieldcell = new html_table_cell();
+                $fieldcell->attributes['class'] = 'header userfield user' . $field;
+                $fieldcell->header = true;
+                $fieldcell->scope = 'row';
+                $fieldcell->text = $user->{$field};
+                $userrow->cells[] = $fieldcell;
             }
 
             $rows[] = $userrow;
@@ -782,7 +776,7 @@ class grade_report_grader extends grade_report {
                     $headerlink = $this->gtree->get_element_header($element, true, $this->get_pref('showactivityicons'), false);
 
                     $itemcell = new html_table_cell();
-                    $itemcell->attributes['class'] = $type . ' ' . $catlevel . 'highlightable';
+                    $itemcell->attributes['class'] = $type . ' ' . $catlevel . ' highlightable';
 
                     if ($element['object']->is_hidden()) {
                         $itemcell->attributes['class'] .= ' hidden';
@@ -801,7 +795,7 @@ class grade_report_grader extends grade_report {
 
         $rows = $this->get_right_icons_row($rows);
 
-        // Preload scale objects for items with a scaleid
+        // Preload scale objects for items with a scaleid and initialize tab indices
         $scaleslist = array();
         $tabindices = array();
 
@@ -1007,6 +1001,9 @@ class grade_report_grader extends grade_report {
                         $itemcell->text .= html_writer::tag('span', get_string('error'), array('class'=>"gradingerror$hidden$gradepass"));
                     } else {
                         $itemcell->text .= html_writer::tag('span', grade_format_gradevalue($gradeval, $item, true, $gradedisplaytype, null), array('class'=>"gradevalue$hidden$gradepass"));
+                        if ($this->get_pref('showanalysisicon')) {
+                            $itemcell->text .= $this->gtree->get_grade_analysis_icon($grade);
+                        }
                     }
                 }
 
@@ -1038,7 +1035,7 @@ class grade_report_grader extends grade_report {
         $module = array(
             'name'      => 'gradereport_grader',
             'fullpath'  => '/grade/report/grader/module.js',
-            'requires'  => array('base', 'dom', 'event', 'event-mouseenter', 'event-key', 'io', 'json-parse', 'overlay')
+            'requires'  => array('base', 'dom', 'event', 'event-mouseenter', 'event-key', 'io-queue', 'json-parse', 'overlay')
         );
         $PAGE->requires->js_init_call('M.gradereport_grader.init_report', $jsarguments, false, $module);
         $PAGE->requires->strings_for_js(array('addfeedback','feedback', 'grade'), 'grades');
@@ -1203,8 +1200,6 @@ class grade_report_grader extends grade_report {
         if ($USER->gradeediting[$this->courseid]) {
             $iconsrow = new html_table_row();
             $iconsrow->attributes['class'] = 'controls';
-
-            $showuseridnumber = $this->get_pref('showuseridnumber');
 
             foreach ($this->gtree->items as $itemid=>$unused) {
                 // emulate grade element
@@ -1441,7 +1436,7 @@ class grade_report_grader extends grade_report {
      * figures out the state of the object and builds then returns a div
      * with the icons needed for the grader report.
      *
-     * @param object $object
+     * @param array $object
      * @return string HTML
      */
     protected function get_icons($element) {
@@ -1463,7 +1458,6 @@ class grade_report_grader extends grade_report {
         $lockunlockicon      = '';
 
         if (has_capability('moodle/grade:manage', $this->context)) {
-
             if ($this->get_pref('showcalculations')) {
                 $editcalculationicon = $this->gtree->get_calculation_icon($element, $this->gpr);
             }
@@ -1475,9 +1469,15 @@ class grade_report_grader extends grade_report {
             if ($this->get_pref('showlocks')) {
                 $lockunlockicon = $this->gtree->get_locking_icon($element, $this->gpr);
             }
+
         }
 
-        return $OUTPUT->container($editicon.$editcalculationicon.$showhideicon.$lockunlockicon, 'grade_icons');
+        $gradeanalysisicon   = '';
+        if ($this->get_pref('showanalysisicon') && $element['type'] == 'grade') {
+            $gradeanalysisicon .= $this->gtree->get_grade_analysis_icon($element['object']);
+        }
+
+        return $OUTPUT->container($editicon.$editcalculationicon.$showhideicon.$lockunlockicon.$gradeanalysisicon, 'grade_icons');
     }
 
     /**
@@ -1587,9 +1587,11 @@ class grade_report_grader extends grade_report {
      * Refactored function for generating HTML of sorting links with matching arrows.
      * Returns an array with 'studentname' and 'idnumber' as keys, with HTML ready
      * to inject into a table header cell.
+     * @param array $extrafields Array of extra fields being displayed, such as
+     *   user idnumber
      * @return array An associative array of HTML sorting links+arrows
      */
-    public function get_sort_arrows() {
+    public function get_sort_arrows(array $extrafields = array()) {
         global $OUTPUT;
         $arrows = array();
 
@@ -1600,7 +1602,6 @@ class grade_report_grader extends grade_report {
 
         $firstlink = html_writer::link(new moodle_url($this->baseurl, array('sortitemid'=>'firstname')), $strfirstname);
         $lastlink = html_writer::link(new moodle_url($this->baseurl, array('sortitemid'=>'lastname')), $strlastname);
-        $idnumberlink = html_writer::link(new moodle_url($this->baseurl, array('sortitemid'=>'idnumber')), get_string('idnumber'));
 
         $arrows['studentname'] = $lastlink;
 
@@ -1622,13 +1623,17 @@ class grade_report_grader extends grade_report {
             }
         }
 
-        $arrows['idnumber'] = $idnumberlink;
+        foreach ($extrafields as $field) {
+            $fieldlink = html_writer::link(new moodle_url($this->baseurl,
+                    array('sortitemid'=>$field)), get_user_field_name($field));
+            $arrows[$field] = $fieldlink;
 
-        if ('idnumber' == $this->sortitemid) {
-            if ($this->sortorder == 'ASC') {
-                $arrows['idnumber'] .= print_arrow('up', $strsortasc, true);
-            } else {
-                $arrows['idnumber'] .= print_arrow('down', $strsortdesc, true);
+            if ($field == $this->sortitemid) {
+                if ($this->sortorder == 'ASC') {
+                    $arrows[$field] .= print_arrow('up', $strsortasc, true);
+                } else {
+                    $arrows[$field] .= print_arrow('down', $strsortdesc, true);
+                }
             }
         }
 

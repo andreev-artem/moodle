@@ -13,7 +13,7 @@
     $hide      = optional_param('hide', 0, PARAM_INT);
     $show      = optional_param('show', 0, PARAM_INT);
     $blocklist = optional_param('blocklist', 0, PARAM_INT);
-    $modulelist= optional_param('modulelist', '', PARAM_ALPHAEXT);
+    $modulelist= optional_param('modulelist', '', PARAM_PLUGIN);
 
     // List of minimum capabilities which user need to have for editing/moving course
     $capabilities = array('moodle/course:create', 'moodle/category:manage');
@@ -50,7 +50,7 @@
         $urlparams['perpage'] = $perpage;
     }
     $PAGE->set_url('/course/search.php', $urlparams);
-    $PAGE->set_context(get_context_instance(CONTEXT_SYSTEM));
+    $PAGE->set_context(context_system::instance());
     $PAGE->set_pagelayout('standard');
 
     if ($CFG->forcelogin) {
@@ -73,7 +73,7 @@
     }
 
 /// Editing functions
-    if (has_capability('moodle/course:visibility', get_context_instance(CONTEXT_SYSTEM))) {
+    if (has_capability('moodle/course:visibility', context_system::instance())) {
     /// Hide or show a course
         if ($hide or $show and confirm_sesskey()) {
             if ($hide) {
@@ -131,14 +131,14 @@
         }
 
         //User should have manage and create capablity on destination category.
-        require_capability('moodle/category:manage', get_context_instance(CONTEXT_COURSECAT, $moveto));
-        require_capability('moodle/course:create', get_context_instance(CONTEXT_COURSECAT, $moveto));
+        require_capability('moodle/category:manage', context_coursecat::instance($moveto));
+        require_capability('moodle/course:create', context_coursecat::instance($moveto));
 
         foreach ( $data as $key => $value ) {
             if (preg_match('/^c\d+$/', $key)) {
                 $courseid = substr($key, 1);
                 // user must have category:manage and course:create capability for the course to be moved.
-                $coursecontext = get_context_instance(CONTEXT_COURSE, $courseid);
+                $coursecontext = context_course::instance($courseid);
                 foreach ($capabilities as $capability) {
                     require_capability($capability, $coursecontext);
                     array_push($courses, $courseid);
@@ -270,7 +270,7 @@
 
             foreach ($courses as $course) {
 
-                $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
+                $coursecontext = context_course::instance($course->id);
 
                 $linkcss = $course->visible ? "" : " class=\"dimmed\" ";
 
@@ -399,7 +399,7 @@
             $defaultperpage = 10;
             //If user has course:create or category:manage capability the show 30 records.
             $capabilities = array('moodle/course:create', 'moodle/category:manage');
-            if (has_any_capability($capabilities, get_context_instance(CONTEXT_SYSTEM))) {
+            if (has_any_capability($capabilities, context_system::instance())) {
                 $defaultperpage = 30;
             }
 

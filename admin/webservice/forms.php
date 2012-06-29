@@ -63,10 +63,16 @@ class external_service_form extends moodleform {
 
         $mform->addElement('text', 'name', get_string('name'));
         $mform->addRule('name', get_string('required'), 'required', null, 'client');
+        $mform->setType('name', PARAM_TEXT);
         $mform->addElement('advcheckbox', 'enabled', get_string('enabled', 'webservice'));
         $mform->addElement('advcheckbox', 'restrictedusers',
                 get_string('restrictedusers', 'webservice'));
         $mform->addHelpButton('restrictedusers', 'restrictedusers', 'webservice');
+
+        //can users download files
+        $mform->addElement('advcheckbox', 'downloadfiles', get_string('downloadfiles', 'webservice'));
+        $mform->setAdvanced('downloadfiles');
+        $mform->addHelpButton('downloadfiles', 'downloadfiles', 'webservice');
 
         /// needed to select automatically the 'No required capability" option
         $currentcapabilityexist = false;
@@ -107,7 +113,7 @@ class external_service_form extends moodleform {
         $mform->setType('id', PARAM_INT);
 
         if (!empty($service->id)) {
-            $buttonlabel = get_string('editaservice', 'webservice');
+            $buttonlabel = get_string('savechanges');
         } else {
             $buttonlabel = get_string('addaservice', 'webservice');
         }
@@ -191,9 +197,9 @@ class web_service_token_form extends moodleform {
                 //user searchable selector - get all users (admin and guest included)
                 //user must be confirmed, not deleted, not suspended, not guest
                 $sql = "SELECT u.id, u.firstname, u.lastname
-                FROM {user} u
-                WHERE u.deleted = 0 AND u.confirmed = 1 AND u.suspended = 0 AND u.id != ?
-                ORDER BY u.lastname";
+                            FROM {user} u
+                            WHERE u.deleted = 0 AND u.confirmed = 1 AND u.suspended = 0 AND u.id != ?
+                            ORDER BY u.lastname";
                 $users = $DB->get_records_sql($sql, array($CFG->siteguest));
                 $options = array();
                 foreach ($users as $userid => $user) {

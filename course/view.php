@@ -127,24 +127,26 @@
             }
         }
 
-        if ($hide && confirm_sesskey()) {
-            set_section_visible($course->id, $hide, '0');
-        }
+        if (has_capability('moodle/course:update', $context)) {
+            if ($hide && confirm_sesskey()) {
+                set_section_visible($course->id, $hide, '0');
+            }
 
-        if ($show && confirm_sesskey()) {
-            set_section_visible($course->id, $show, '1');
-        }
+            if ($show && confirm_sesskey()) {
+                set_section_visible($course->id, $show, '1');
+            }
 
-        if (!empty($section)) {
-            if (!empty($move) and confirm_sesskey()) {
-                if (move_section($course, $section, $move)) {
-                    if ($course->id == SITEID) {
-                        redirect($CFG->wwwroot . '/?redirect=0');
+            if (!empty($section)) {
+                if (!empty($move) and confirm_sesskey()) {
+                    if (move_section($course, $section, $move)) {
+                        if ($course->id == SITEID) {
+                            redirect($CFG->wwwroot . '/?redirect=0');
+                        } else {
+                            redirect($PAGE->url);
+                        }
                     } else {
-                        redirect($PAGE->url);
+                        echo $OUTPUT->notification('An error occurred while moving a section');
                     }
-                } else {
-                    echo $OUTPUT->notification('An error occurred while moving a section');
                 }
             }
         }

@@ -273,7 +273,8 @@ function form_filemanager_render($options) {
         $extra = '';
     }
 
-    $maxsize = get_string('maxfilesize', 'moodle', display_size(get_max_upload_file_size($CFG->maxbytes, $course_maxbytes, $options->maxbytes)));
+    $options->maxbytes = get_max_upload_file_size($CFG->maxbytes, $course_maxbytes, $options->maxbytes);
+    $maxsize = get_string('maxfilesize', 'moodle', display_size($options->maxbytes));
     $loading = get_string('loading', 'repository');
     $html .= <<<FMHTML
 <div class="filemanager-loading mdl-align" id='filemanager-loading-{$client_id}'>
@@ -305,7 +306,7 @@ FMHTML;
     $module = array(
         'name'=>'form_filemanager',
         'fullpath'=>'/lib/form/filemanager.js',
-        'requires' => array('core_filepicker', 'base', 'io', 'node', 'json', 'yui2-button', 'yui2-container', 'yui2-layout', 'yui2-menu', 'yui2-treeview'),
+        'requires' => array('core_filepicker', 'base', 'io-base', 'node', 'json', 'yui2-button', 'yui2-container', 'yui2-layout', 'yui2-menu', 'yui2-treeview'),
         'strings' => array(array('loading', 'repository'), array('nomorefiles', 'repository'), array('confirmdeletefile', 'repository'),
              array('add', 'repository'), array('accessiblefilepicker', 'repository'), array('move', 'moodle'),
              array('cancel', 'moodle'), array('download', 'moodle'), array('ok', 'moodle'),

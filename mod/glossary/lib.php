@@ -971,9 +971,8 @@ function glossary_print_entry_default ($entry, $glossary, $cm) {
  */
 function  glossary_print_entry_concept($entry, $return=false) {
     global $OUTPUT;
-    $options = new stdClass();
-    $options->para = false;
-    $text = format_text($OUTPUT->heading('<span class="nolink">' . $entry->concept . '</span>', 3, 'nolink'), FORMAT_MOODLE, $options);
+
+    $text = html_writer::tag('h3', format_string($entry->concept));
     if (!empty($entry->highlight)) {
         $text = highlight($entry->highlight, $text);
     }
@@ -1015,6 +1014,7 @@ function glossary_print_entry_definition($entry, $glossary, $cm) {
     $options->trusted = $entry->definitiontrust;
     $options->context = $context;
     $options->overflowdiv = true;
+
     $text = format_text($definition, $entry->definitionformat, $options);
 
     // Stop excluding concepts from autolinking
@@ -2750,6 +2750,7 @@ function glossary_supports($feature) {
         case FEATURE_GRADE_OUTCOMES:          return true;
         case FEATURE_RATE:                    return true;
         case FEATURE_BACKUP_MOODLE2:          return true;
+        case FEATURE_SHOW_DESCRIPTION:        return true;
 
         default: return null;
     }
@@ -2829,8 +2830,7 @@ function glossary_extend_settings_navigation(settings_navigation $settings, navi
 
     $glossary = $DB->get_record('glossary', array("id" => $PAGE->cm->instance));
 
-    $coursecontext = get_context_instance(CONTEXT_COURSE, $PAGE->course->id, MUST_EXIST);
-    if (!empty($CFG->enablerssfeeds) && !empty($CFG->glossary_enablerssfeeds) && $glossary->rsstype && $glossary->rssarticles  && can_access_course($coursecontext, $USER)) {
+    if (!empty($CFG->enablerssfeeds) && !empty($CFG->glossary_enablerssfeeds) && $glossary->rsstype && $glossary->rssarticles  && can_access_course($PAGE->course, $USER)) {
         require_once("$CFG->libdir/rsslib.php");
 
         $string = get_string('rsstype','forum');

@@ -28,4 +28,4 @@
 
 #page-mod-glossary-showentry #page-content {min-width:600px;}
 
-#glossaryoverlayprogress {position:fixed;top:50%;width:100%;text-align:center;}
+#page-mod-glossary-print .mod-glossary-entrylist .mod-glossary-entry { vertical-align: top; }

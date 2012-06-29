@@ -34,6 +34,10 @@ a.dimmed_text:visited,
 .dimmed_text a,
 .dimmed_text a:link,
 .dimmed_text a:visited,
+.usersuspended,
+.usersuspended a,
+.usersuspended a:link,
+.usersuspended a:visited,
 .dimmed_category,
 .dimmed_category a {
     color: #AAA;
@@ -370,16 +374,10 @@ table.mod_index {width:100%;}
  */
 .completion-expired {background:#FFDDDD;}
 .completion-expected {font-size:0.75em;}
-.completion-sortchoice {font-size:0.75em;vertical-align:bottom;}
+.completion-sortchoice,
+.completion-identifyfield {font-size:0.75em;vertical-align:bottom;}
 .completion-progresscell {text-align:right;}
 .completion-expired .completion-expected {font-weight:bold;}
-#page-course-report-progress-index th,
-#page-course-report-progress-index td {padding:2px 4px;font-weight:normal;border-right: 1px solid #EEE;}
-#page-course-report-progress-index .progress-actions {text-align:center;}
-#page-course-report-progress-index .completion_pagingbar {margin:1em 0;text-align:center;}
-#page-course-report-progress-index .completion_prev {display:inline;margin-right:2em;}
-#page-course-report-progress-index .completion_pagingbar p {display:inline;margin:0;}
-#page-course-report-progress-index .completion_next {display:inline;margin-left:2em;}
 
 /**
  * Tags
@@ -581,6 +579,7 @@ body.tag .managelink {padding: 5px;}
 #custommenu .yui3-menu-horizontal.javascript-disabled .yui3-menu-content .ul {border:1px solid #000;}
 #custommenu .yui3-menu-horizontal.javascript-disabled ul {margin:0;padding:0;}
 #custommenu .yui3-menu-horizontal.javascript-disabled li {margin:0;padding:0;list-style:none;width:auto;position:relative;}
+#custommenu .yui3-menu-horizontal.javascript-disabled .yui3-menu .yui3-menu-label {padding-right:20px;}
 #custommenu .yui3-menu-horizontal.javascript-disabled>.yui3-menu-content>ul>li {float:left;}
 #custommenu .yui3-menu-horizontal.javascript-disabled li a {padding:0 10px;}
 #custommenu .yui3-menu-horizontal.javascript-disabled .yui3-menu {position:absolute;top:-10000px;left:-10000px;visibility:hidden;white-space: nowrap;max-width: 250px;background-color:#FFF;}
@@ -589,6 +588,20 @@ body.tag .managelink {padding: 5px;}
 #custommenu .yui3-menu-horizontal.javascript-disabled>.yui3-menu-content>ul:after {content:"";display:block;clear:both;line-height:0;font-size:0;visibility:hidden;}
 #custommenu .yui3-menu-horizontal.javascript-disabled .yui3-menu-content {font-size:93%;line-height:2;padding:0;}
 #custommenu .yui3-menu-horizontal.javascript-disabled .yui3-menu-content .yui3-menu-content {font-size:100%;}
+
+/**
+ * Fix for broken YUI images in the menunav component
+ */
+#custommenu .yui3-menu-label,
+#custommenu .yui3-menuitem-content {cursor:pointer;}
+#custommenu .yui3-menuitem-active {background-color:#B3D4FF;}
+#custommenu .yui3-menuitem-active,
+#custommenu .yui3-menuitem-active .yui3-menuitem-content,
+#custommenu .yui3-menu-horizontal .yui3-menu-label,
+#custommenu .yui3-menu-horizontal .yui3-menu-content {background-image:none;background-position:right center;background-repeat:no-repeat;}
+#custommenu .yui3-menu-label,
+#custommenu .yui3-menu .yui3-menu .yui3-menu-label {background-image:url([[pix:theme|vertical-menu-submenu-indicator]]);}
+#custommenu .yui3-menu .yui3-menu .yui3-menu-label-menuvisible {background-image:url([[pix:theme|horizontal-menu-submenu-indicator]]);}
 
 /**
  * Smart Select Element
@@ -707,12 +720,6 @@ body.tag .managelink {padding: 5px;}
  */
 .ie.dir-rtl .mform .fitem .felement {margin-right:0;text-align:right;float:right;}
 
-/**
- * Fix for broken YUI images in the menunav component
- */
-.yui3-skin-sam .yui3-menu-horizontal .yui3-menu-label,
-.yui3-skin-sam .yui3-menu-horizontal .yui3-menu-content {background-image:none;}
-
 .mod-indent-1 {margin-left:20px;}
 .mod-indent-2 {margin-left:40px;}
 .mod-indent-3 {margin-left:60px;}
@@ -747,7 +754,8 @@ body.tag .managelink {padding: 5px;}
 .dir-rtl .mod-indent-15,
 .dir-rtl .mod-indent-huge {margin-right:300px;margin-left:0;}
 
-.dir-rtl .felement.feditor select {margin-right:18.75%;}
+.dir-rtl .felement.feditor select {margin-right:18.75%;margin-left:auto;}
+.dir-rtl .mform .fitem .felement {margin-right: 16%;margin-left:auto;}
 
 /* Resourcelib mp3 player size: only width could be changed here, height hardcoded in JS */
 .resourcecontent .resourcemediaplugin_mp3 object {height:25px; width: 600px}

@@ -33,23 +33,14 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/quiz/lib.php');
-require_once($CFG->dirroot . '/mod/quiz/accessrules.php');
+require_once($CFG->dirroot . '/mod/quiz/accessmanager.php');
+require_once($CFG->dirroot . '/mod/quiz/accessmanager_form.php');
 require_once($CFG->dirroot . '/mod/quiz/renderer.php');
 require_once($CFG->dirroot . '/mod/quiz/attemptlib.php');
 require_once($CFG->dirroot . '/question/editlib.php');
 require_once($CFG->libdir  . '/eventslib.php');
 require_once($CFG->libdir . '/filelib.php');
 
-
-/**#@+
- * Options determining how the grades from individual attempts are combined to give
- * the overall grade for a user
- */
-define('QUIZ_GRADEHIGHEST', '1');
-define('QUIZ_GRADEAVERAGE', '2');
-define('QUIZ_ATTEMPTFIRST', '3');
-define('QUIZ_ATTEMPTLAST',  '4');
-/**#@-*/
 
 /**
  * We show the countdown timer if there is less than this amount of time left before the
@@ -400,19 +391,6 @@ function quiz_has_feedback($quiz) {
     return $cache[$quiz->id];
 }
 
-function quiz_no_questions_message($quiz, $cm, $context) {
-    global $OUTPUT;
-
-    $output = '';
-    $output .= $OUTPUT->notification(get_string('noquestions', 'quiz'));
-    if (has_capability('mod/quiz:manage', $context)) {
-        $output .= $OUTPUT->single_button(new moodle_url('/mod/quiz/edit.php',
-                array('cmid' => $cm->id)), get_string('editquiz', 'quiz'), 'get');
-    }
-
-    return $output;
-}
-
 /**
  * Update the sumgrades field of the quiz. This needs to be called whenever
  * the grading structure of the quiz is changed. For example if a question is
@@ -483,28 +461,33 @@ function quiz_set_grade($newgrade, $quiz) {
         return true;
     }
 
+    $oldgrade = $quiz->grade;
+    $quiz->grade = $newgrade;
+
     // Use a transaction, so that on those databases that support it, this is safer.
     $transaction = $DB->start_delegated_transaction();
 
     // Update the quiz table.
     $DB->set_field('quiz', 'grade', $newgrade, array('id' => $quiz->instance));
 
-    // Rescaling the other data is only possible if the old grade was non-zero.
-    if ($quiz->grade > 1e-7) {
-        global $CFG;
+    if ($oldgrade < 1) {
+        // If the old grade was zero, we cannot rescale, we have to recompute.
+        // We also recompute if the old grade was too small to avoid underflow problems.
+        quiz_update_all_final_grades($quiz);
 
-        $factor = $newgrade/$quiz->grade;
-        $quiz->grade = $newgrade;
-
-        // Update the quiz_grades table.
+    } else {
+        // We can rescale the grades efficiently.
         $timemodified = time();
         $DB->execute("
                 UPDATE {quiz_grades}
                 SET grade = ? * grade, timemodified = ?
                 WHERE quiz = ?
-        ", array($factor, $timemodified, $quiz->id));
+        ", array($newgrade/$oldgrade, $timemodified, $quiz->id));
+    }
 
+    if ($oldgrade > 1e-7) {
         // Update the quiz_feedback table.
+        $factor = $newgrade/$oldgrade;
         $DB->execute("
                 UPDATE {quiz_feedback}
                 SET mingrade = ? * mingrade, maxgrade = ? * maxgrade
@@ -512,7 +495,7 @@ function quiz_set_grade($newgrade, $quiz) {
         ", array($factor, $factor, $quiz->id));
     }
 
-    // update grade item and send all grades to gradebook
+    // Update grade item and send all grades to gradebook.
     quiz_grade_item_update($quiz);
     quiz_update_grades($quiz);
 
@@ -1314,15 +1297,6 @@ function quiz_attempt_submitted_handler($event) {
             get_context_instance(CONTEXT_MODULE, $cm->id), $cm);
 }
 
-/**
- * Checks if browser is safe browser
- *
- * @return true, if browser is safe browser else false
- */
-function quiz_check_safe_browser() {
-    return strpos($_SERVER['HTTP_USER_AGENT'], "SEB") !== false;
-}
-
 function quiz_get_js_module() {
     global $PAGE;
 
@@ -1333,9 +1307,10 @@ function quiz_get_js_module() {
                 'core_question_engine'),
         'strings' => array(
             array('cancel', 'moodle'),
-            array('timesup', 'quiz'),
-            array('functiondisabledbysecuremode', 'quiz'),
             array('flagged', 'question'),
+            array('functiondisabledbysecuremode', 'quiz'),
+            array('startattempt', 'quiz'),
+            array('timesup', 'quiz'),
         ),
     );
 }

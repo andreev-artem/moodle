@@ -42,6 +42,16 @@ define('QUIZ_MAX_DECIMAL_OPTION', 5);
 define('QUIZ_MAX_Q_DECIMAL_OPTION', 7);
 /**#@-*/
 
+/**#@+
+ * Options determining how the grades from individual attempts are combined to give
+ * the overall grade for a user
+ */
+define('QUIZ_GRADEHIGHEST', '1');
+define('QUIZ_GRADEAVERAGE', '2');
+define('QUIZ_ATTEMPTFIRST', '3');
+define('QUIZ_ATTEMPTLAST',  '4');
+/**#@-*/
+
 /**
  * If start and end date for the quiz are more than this many seconds apart
  * they will be represented by two separate events in the calendar
@@ -369,8 +379,9 @@ function quiz_user_outline($course, $user, $mod, $quiz) {
     $result->info = get_string('grade') . ': ' . $grade->str_long_grade;
 
     //datesubmitted == time created. dategraded == time modified or time overridden
-    //if grade was last modified by the user themselves use date graded. Otherwise use date submitted
-    //TODO: move this copied & pasted code somewhere in the grades API. See MDL-26704
+    //if grade was last modified by the user themselves use date graded. Otherwise use
+    // date submitted
+    // TODO: move this copied & pasted code somewhere in the grades API. See MDL-26704
     if ($grade->usermodified == $user->id || empty($grade->datesubmitted)) {
         $result->time = $grade->dategraded;
     } else {
@@ -407,7 +418,7 @@ function quiz_user_complete($course, $user, $mod, $quiz) {
     if ($attempts = $DB->get_records('quiz_attempts',
             array('userid' => $user->id, 'quiz' => $quiz->id), 'attempt')) {
         foreach ($attempts as $attempt) {
-            echo get_string('attempt', 'quiz').' '.$attempt->attempt.': ';
+            echo get_string('attempt', 'quiz', $attempt->attempt) . ': ';
             if ($attempt->timefinish == 0) {
                 print_string('unfinished');
             } else {
@@ -427,10 +438,42 @@ function quiz_user_complete($course, $user, $mod, $quiz) {
  * Function to be run periodically according to the moodle cron
  * This function searches for things that need to be done, such
  * as sending out mail, toggling flags etc ...
- *
- * @return bool true
  */
 function quiz_cron() {
+    global $DB, $CFG;
+
+    // First handle standard plugins.
+    cron_execute_plugin_type('quiz', 'quiz reports');
+
+    // The deal with any plugins that do it the legacy way.
+    mtrace("Starting legacy quiz reports");
+    $timenow = time();
+    if ($reports = $DB->get_records_select('quiz_reports', "cron > 0 AND ((? - lastcron) > cron)", array($timenow))) {
+        foreach ($reports as $report) {
+            $cronfile = "$CFG->dirroot/mod/quiz/report/$report->name/cron.php";
+            if (file_exists($cronfile)) {
+                include_once($cronfile);
+                $cron_function = 'quiz_report_'.$report->name."_cron";
+                if (function_exists($cron_function)) {
+                    mtrace("Processing quiz report cron function $cron_function ...", '');
+                    $pre_dbqueries = null;
+                    $pre_dbqueries = $DB->perf_get_queries();
+                    $pre_time      = microtime(1);
+                    if ($cron_function()) {
+                        $DB->set_field('quiz_reports', "lastcron", $timenow, array("id"=>$report->id));
+                    }
+                    if (isset($pre_dbqueries)) {
+                        mtrace("... used " . ($DB->perf_get_queries() - $pre_dbqueries) . " dbqueries");
+                        mtrace("... used " . (microtime(1) - $pre_time) . " seconds");
+                    }
+                    @set_time_limit(0);
+                    mtrace("done.");
+                }
+            }
+        }
+    }
+    mtrace("Finished legacy quiz reports");
+
     return true;
 }
 
@@ -1038,6 +1081,9 @@ function quiz_after_add_or_update($quiz) {
                 array('id' => $feedback->id));
     }
 
+    // Store any settings belonging to the access rules.
+    quiz_access_manager::save_settings($quiz);
+
     // Update the events relating to this quiz.
     quiz_update_events($quiz);
 
@@ -1090,8 +1136,8 @@ function quiz_update_events($quiz, $override = null) {
         $addclose = empty($current->id) || !empty($current->timeclose);
 
         $event = new stdClass();
-        $event->description = $quiz->intro;
-        // Events module won't show user events when the courseid is nonzero
+        $event->description = format_module_intro('quiz', $quiz, $quiz->coursemodule);
+        // Events module won't show user events when the courseid is nonzero.
         $event->courseid    = ($userid) ? 0 : $quiz->course;
         $event->groupid     = $groupid;
         $event->userid      = $userid;
@@ -1497,6 +1543,7 @@ function quiz_supports($feature) {
         case FEATURE_GRADE_HAS_GRADE:         return true;
         case FEATURE_GRADE_OUTCOMES:          return false;
         case FEATURE_BACKUP_MOODLE2:          return true;
+        case FEATURE_SHOW_DESCRIPTION:        return true;
 
         default: return null;
     }

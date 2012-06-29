@@ -239,7 +239,6 @@ foreach ($result->posts as $post) {
     // load ratings
     if ($forum->assessed != RATING_AGGREGATE_NONE) {
         $ratingoptions->context = $cm->context;
-            $ratingoptions->component = 'mod_forum';
         $ratingoptions->items = array($post);
         $ratingoptions->aggregate = $forum->assessed;//the aggregation method
         $ratingoptions->scaleid = $forum->scale;

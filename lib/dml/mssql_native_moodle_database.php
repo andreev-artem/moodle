@@ -810,7 +810,7 @@ class mssql_native_moodle_database extends moodle_database {
         } else {
             unset($params['id']);
             if ($returnid) {
-                $returning = "; SELECT SCOPE_IDENTITY()";
+                $returning = "OUTPUT inserted.id";
             }
         }
 
@@ -822,18 +822,29 @@ class mssql_native_moodle_database extends moodle_database {
         $qms    = array_fill(0, count($params), '?');
         $qms    = implode(',', $qms);
 
-        $sql = "INSERT INTO {" . $table . "} ($fields) VALUES($qms) $returning";
+        $sql = "INSERT INTO {" . $table . "} ($fields) $returning VALUES ($qms)";
 
         list($sql, $params, $type) = $this->fix_sql_params($sql, $params);
         $rawsql = $this->emulate_bound_params($sql, $params);
 
         $this->query_start($sql, $params, SQL_QUERY_INSERT);
         $result = mssql_query($rawsql, $this->mssql);
-        $this->query_end($result);
+        // Expected results are:
+        //     - true: insert ok and there isn't returned information.
+        //     - false: insert failed and there isn't returned information.
+        //     - resource: insert executed, need to look for returned (output)
+        //           values to know if the insert was ok or no. Posible values
+        //           are false = failed, integer = insert ok, id returned.
+        $end = false;
+        if (is_bool($result)) {
+            $end = $result;
+        } else if (is_resource($result)) {
+            $end = mssql_result($result, 0, 0); // Fetch 1st column from 1st row.
+        }
+        $this->query_end($end); // End the query with the calculated $end.
 
         if ($returning !== "") {
-            $row = mssql_fetch_assoc($result);
-            $params['id'] = reset($row);
+            $params['id'] = $end;
         }
         $this->free_result($result);
 
@@ -1227,17 +1238,45 @@ s only returning name of SQL substring function, it now requires all parameters.
         return true;
     }
 
-    public function get_session_lock($rowid) {
+    /**
+     * Obtain session lock
+     * @param int $rowid id of the row with session record
+     * @param int $timeout max allowed time to wait for the lock in seconds
+     * @return bool success
+     */
+    public function get_session_lock($rowid, $timeout) {
         if (!$this->session_lock_supported()) {
             return;
         }
-        parent::get_session_lock($rowid);
+        parent::get_session_lock($rowid, $timeout);
+
+        $timeoutmilli = $timeout * 1000;
 
         $fullname = $this->dbname.'-'.$this->prefix.'-session-'.$rowid;
-        $sql = "sp_getapplock '$fullname', 'Exclusive', 'Session',  120000";
+        // There is one bug in PHP/freetds (both reproducible with mssql_query()
+        // and its mssql_init()/mssql_bind()/mssql_execute() alternative) for
+        // stored procedures, causing scalar results of the execution
+        // to be cast to boolean (true/fals). Here there is one
+        // workaround that forces the return of one recordset resource.
+        // $sql = "sp_getapplock '$fullname', 'Exclusive', 'Session',  $timeoutmilli";
+        $sql = "BEGIN
+                    DECLARE @result INT
+                    EXECUTE @result = sp_getapplock @Resource='$fullname',
+                                                    @LockMode='Exclusive',
+                                                    @LockOwner='Session',
+                                                    @LockTimeout='$timeoutmilli'
+                    SELECT @result
+                END";
         $this->query_start($sql, null, SQL_QUERY_AUX);
         $result = mssql_query($sql, $this->mssql);
         $this->query_end($result);
+
+        if ($result) {
+            $row = mssql_fetch_row($result);
+            if ($row[0] < 0) {
+                throw new dml_sessionwait_exception();
+            }
+        }
 
         $this->free_result($result);
     }

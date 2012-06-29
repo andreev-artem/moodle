@@ -293,8 +293,9 @@ class completion_info {
      */
     public function get_user_completion($user_id, $criteria) {
         $params = array(
+            'course'        => $this->course_id,
+            'userid'        => $user_id,
             'criteriaid'    => $criteria->id,
-            'userid'        => $user_id
         );
 
         $completion = new completion_criteria_completion($params);
@@ -336,7 +337,7 @@ class completion_info {
             // Build array of criteria objects
             $this->criteria = array();
             foreach ($records as $record) {
-                $this->criteria[$record->id] = completion_criteria::factory($record);
+                $this->criteria[$record->id] = completion_criteria::factory((array)$record);
             }
         }
 
@@ -1057,10 +1058,12 @@ class completion_info {
      * @param   string      $sort       Order by clause (optional)
      * @param   integer     $limitfrom  Result start (optional)
      * @param   integer     $limitnum   Result max size (optional)
+     * @param context $extracontext If set, includes extra user information fields
+     *   as appropriate to display for current user in this context
      * @return  array
      */
     function get_tracked_users($where = '', $where_params = array(), $groupid = 0,
-             $sort = '', $limitfrom = '', $limitnum = '') {
+             $sort = '', $limitfrom = '', $limitnum = '', context $extracontext = null) {
 
         global $DB;
 
@@ -1074,6 +1077,9 @@ class completion_info {
                 u.lastname,
                 u.idnumber
         ";
+        if ($extracontext) {
+            $sql .= get_extra_user_fields_sql($extracontext, 'u', '', array('idnumber'));
+        }
 
         $sql .= $tracked->sql;
 
@@ -1190,16 +1196,19 @@ class completion_info {
      * @param int $groupid Group ID or 0 (default)/false for all groups
      * @param int $pagesize Number of users to actually return (optional)
      * @param int $start User to start at if paging (optional)
+     * @param context $extracontext If set, includes extra user information fields
+     *   as appropriate to display for current user in this context
      * @return Object with ->total and ->start (same as $start) and ->users;
      *   an array of user objects (like mdl_user id, firstname, lastname)
      *   containing an additional ->progress array of coursemoduleid => completionstate
      */
     public function get_progress_all($where = '', $where_params = array(), $groupid = 0,
-                                       $sort = '', $pagesize = '', $start = '') {
+            $sort = '', $pagesize = '', $start = '', context $extracontext = null) {
         global $CFG, $DB;
 
         // Get list of applicable users
-        $users = $this->get_tracked_users($where, $where_params, $groupid, $sort, $start, $pagesize);
+        $users = $this->get_tracked_users($where, $where_params, $groupid, $sort,
+                $start, $pagesize, $extracontext);
 
         // Get progress information for these users in groups of 1, 000 (if needed)
         // to avoid making the SQL IN too long

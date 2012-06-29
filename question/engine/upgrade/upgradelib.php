@@ -88,8 +88,9 @@ class question_engine_attempt_upgrader {
         global $CFG, $DB;
 
         // Look to see if the admin has set things up to only upgrade certain attempts.
-        $partialupgradefile = $CFG->dirroot . '/local/qeupgradehelper/partialupgrade.php';
-        $partialupgradefunction = 'local_qeupgradehelper_get_quizzes_to_upgrade';
+        $partialupgradefile = $CFG->dirroot . '/' . $CFG->admin .
+                '/tool/qeupgradehelper/partialupgrade.php';
+        $partialupgradefunction = 'tool_qeupgradehelper_get_quizzes_to_upgrade';
         if (is_readable($partialupgradefile)) {
             include_once($partialupgradefile);
             if (function_exists($partialupgradefunction)) {
@@ -245,9 +246,9 @@ class question_engine_attempt_upgrader {
             $qa = $qas[$questionid];
             $qa->questionusageid = $attempt->uniqueid;
             $qa->slot = $i;
-            if (textlib_get_instance()->strlen($qa->questionsummary) > question_bank::MAX_SUMMARY_LENGTH) {
+            if (textlib::strlen($qa->questionsummary) > question_bank::MAX_SUMMARY_LENGTH) {
                 // It seems some people write very long quesions! MDL-30760
-                $qa->questionsummary = textlib_get_instance()->substr($qa->questionsummary,
+                $qa->questionsummary = textlib::substr($qa->questionsummary,
                         0, question_bank::MAX_SUMMARY_LENGTH - 3) . '...';
             }
             $this->insert_record('question_attempts', $qa);
@@ -356,7 +357,8 @@ class question_engine_attempt_upgrader {
                 return 'qbehaviour_manualgraded_converter';
             }
         }
-        if ($question->qtype == 'essay') {
+        $qtype = question_bank::get_qtype($question->qtype, false);
+        if ($qtype->is_manual_graded()) {
             return 'qbehaviour_manualgraded_converter';
         } else if ($question->qtype == 'description') {
             return 'qbehaviour_informationitem_converter';

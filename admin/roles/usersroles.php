@@ -54,6 +54,17 @@ if (!$canview) {
     print_error('nopermissions', 'error', '', get_string('checkpermissions', 'role'));
 }
 
+if ($userid != $USER->id) {
+    // If its not the current user we need to extend the navigation for that user to ensure
+    // their navigation is loaded and this page found upon it.
+    $PAGE->navigation->extend_for_user($user);
+}
+if ($course->id != $SITE->id || $userid != $USER->id) {
+    // If we're within a course OR if we're viewing another user then we need to include the
+    // settings base on the navigation to ensure that the navbar will contain the users name.
+    $PAGE->navbar->includesettingsbase = true;
+}
+
 /// Now get the role assignments for this user.
 $sql = "SELECT
         ra.id, ra.userid, ra.contextid, ra.roleid, ra.component, ra.itemid,
@@ -96,7 +107,8 @@ foreach ($contexts as $conid => $con) {
 
 /// Put the contexts into a tree structure.
 foreach ($contexts as $conid => $con) {
-    $parentcontextid = get_parent_contextid($con);
+    $context = context::instance_by_id($conid);
+    $parentcontextid = get_parent_contextid($context);
     if ($parentcontextid) {
         $contexts[$parentcontextid]->children[] = $conid;
     }
@@ -119,14 +131,9 @@ $title = get_string('xroleassignments', 'role', $fullname);
 $PAGE->set_title($title);
 if ($courseid != SITEID) {
     $PAGE->set_heading($fullname);
-    if (has_capability('moodle/course:viewparticipants', $coursecontext)) {
-        $PAGE->navbar->add(get_string('participants'),new moodle_url('/user/index.php', array('id'=>$courseid)));
-    }
 } else {
     $PAGE->set_heading($course->fullname);
 }
-$PAGE->navbar->add($fullname, new moodle_url("$CFG->wwwroot/user/view.php", array('id'=>$userid,'course'=>$courseid)));
-$PAGE->navbar->add($straction);
 echo $OUTPUT->header();
 echo $OUTPUT->heading($title, 3);
 echo $OUTPUT->box_start('generalbox boxaligncenter boxwidthnormal');
@@ -156,13 +163,13 @@ function print_report_tree($contextid, $contexts, $systemcontext, $fullname) {
     }
 
     // Pull the current context into an array for convinience.
-    $context = $contexts[$contextid];
+    $context = context::instance_by_id($contextid);
 
     // Print the context name.
-    echo $OUTPUT->heading(print_context_name($contexts[$contextid]), 4, 'contextname');
+    echo $OUTPUT->heading($context->get_context_name(), 4, 'contextname');
 
     // If there are any role assignments here, print them.
-    foreach ($context->roleassignments as $ra) {
+    foreach ($contexts[$contextid]->roleassignments as $ra) {
         $value = $ra->contextid . ',' . $ra->roleid;
         $inputid = 'unassign' . $value;
 

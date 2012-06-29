@@ -91,7 +91,7 @@ if ($id) {
 }
 
 if ($importcode = optional_param('importcode', '', PARAM_FILE)) {
-    $filename = $CFG->dataroot.'/temp/gradeimport/cvs/'.$USER->id.'/'.$importcode;
+    $filename = $CFG->tempdir.'/gradeimport/cvs/'.$USER->id.'/'.$importcode;
     $fp = fopen($filename, "r");
     $headers = fgets($fp, GRADE_CSV_LINE_LENGTH);
     $header = explode($csv_delimiter, $headers);
@@ -111,7 +111,7 @@ if ($formdata = $mform->get_data()) {
 
     // use current (non-conflicting) time stamp
     $importcode = get_new_importcode();
-    $filename = make_upload_directory('temp/gradeimport/cvs/'.$USER->id);
+    $filename = make_temp_directory('gradeimport/cvs/'.$USER->id);
     $filename = $filename.'/'.$importcode;
 
     $text = $mform->get_file_content('userfile');
@@ -126,7 +126,9 @@ if ($formdata = $mform->get_data()) {
     fwrite($fp,$text);
     fclose($fp);
 
-    $fp = fopen($filename, "r");
+    if (!$fp = fopen($filename, "r")) {
+        print_error('cannotopenfile');
+    }
 
     // --- get header (field names) ---
     $header = explode($csv_delimiter, fgets($fp, GRADE_CSV_LINE_LENGTH));
@@ -164,7 +166,7 @@ if ($formdata = $mform->get_data()) {
 } else if ($formdata = $mform2->get_data()) {
 
     $importcode = clean_param($formdata->importcode, PARAM_FILE);
-    $filename = $CFG->dataroot.'/temp/gradeimport/cvs/'.$USER->id.'/'.$importcode;
+    $filename = $CFG->tempdir.'/gradeimport/cvs/'.$USER->id.'/'.$importcode;
 
     if (!file_exists($filename)) {
         print_error('cannotuploadfile');

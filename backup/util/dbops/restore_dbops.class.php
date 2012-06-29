@@ -1197,7 +1197,7 @@ abstract class restore_dbops {
         // With problems of type error, throw exception, shouldn't happen if prechecks were originally
         // executed, so be radical here.
         if (array_key_exists('errors', $problems)) {
-            throw new restore_dbops_exception('restore_problems_processing_questions', null, implode(', ', $problems));
+            throw new restore_dbops_exception('restore_problems_processing_questions', null, implode(', ', $problems['errors']));
         }
     }
 
@@ -1354,10 +1354,11 @@ abstract class restore_dbops {
     /**
      * Deletes all of the content associated with the given course (courseid)
      * @param int $courseid
+     * @param array $options
      * @return bool True for success
      */
-    public static function delete_course_content($courseid) {
-        return remove_course_contents($courseid, false);
+    public static function delete_course_content($courseid, array $options = null) {
+        return remove_course_contents($courseid, false, $options);
     }
 }
 

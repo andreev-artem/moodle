@@ -142,11 +142,19 @@ abstract class backup_activity_task extends backup_task {
             $this->add_step(new backup_activity_logs_structure_step('activity_logs', 'logs.xml'));
         }
 
+        // Generate the calendar events file (conditionally)
+        if ($this->get_setting_value('calendarevents')) {
+            $this->add_step(new backup_calendarevents_structure_step('activity_calendar', 'calendar.xml'));
+        }
+
         // Fetch all the activity grade items and put them to backup_ids
         $this->add_step(new backup_activity_grade_items_to_ids('fetch_activity_grade_items'));
 
         // Generate the grades file
         $this->add_step(new backup_activity_grades_structure_step('activity_grades', 'grades.xml'));
+
+        // Generate the grading file (conditionally)
+        $this->add_step(new backup_activity_grading_structure_step('activity_grading', 'grading.xml'));
 
         // Annotate the scales used in already annotated outcomes
         $this->add_step(new backup_annotate_scales_from_outcomes('annotate_scales'));

@@ -204,6 +204,7 @@ abstract class page_wiki {
 
         $this->page = $page;
         $this->title = $page->title;
+        // set_title calls format_string itself so no probs there
         $PAGE->set_title($this->title);
     }
 
@@ -217,6 +218,7 @@ abstract class page_wiki {
 
         $this->page = null;
         $this->title = $title;
+        // set_title calls format_string itself so no probs there
         $PAGE->set_title($this->title);
     }
 
@@ -347,7 +349,7 @@ class page_wiki_view extends page_wiki {
             print_error(get_string('invalidparameters', 'wiki'));
         }
 
-        $PAGE->set_url($CFG->wwwroot . '/mod/wiki/view.php', $params);
+        $PAGE->set_url(new moodle_url($CFG->wwwroot . '/mod/wiki/view.php', $params));
     }
 
     function set_coursemodule($id) {
@@ -355,7 +357,7 @@ class page_wiki_view extends page_wiki {
     }
 
     protected function create_navbar() {
-        global $PAGE, $CFG;
+        global $PAGE;
 
         $PAGE->navbar->add(format_string($this->title));
         $PAGE->navbar->add(get_string('view', 'wiki'));
@@ -540,7 +542,13 @@ class page_wiki_edit extends page_wiki {
             $url .= "&section=" . urlencode($this->section);
         }
 
-        $params = array('attachmentoptions' => page_wiki_edit::$attachmentoptions, 'format' => $version->contentformat, 'version' => $versionnumber, 'pagetitle'=>$this->page->title);
+        $params = array(
+            'attachmentoptions' => page_wiki_edit::$attachmentoptions,
+            'format' => $version->contentformat,
+            'version' => $versionnumber,
+            'pagetitle' => $this->page->title,
+            'contextid' => $this->modcontext->id
+        );
 
         $data = new StdClass();
         $data->newcontent = $content;
@@ -556,11 +564,10 @@ class page_wiki_edit extends page_wiki {
             break;
         default:
             break;
-            }
+        }
 
         if ($version->contentformat != 'html') {
             $params['fileitemid'] = $this->subwiki->id;
-            $params['contextid']  = $this->modcontext->id;
             $params['component']  = 'mod_wiki';
             $params['filearea']   = 'attachments';
         }
@@ -855,6 +862,7 @@ class page_wiki_create extends page_wiki {
     private $wid;
     private $action;
     private $mform;
+    private $groups;
 
     function print_header() {
         $this->set_url();
@@ -865,19 +873,17 @@ class page_wiki_create extends page_wiki {
         global $PAGE, $CFG;
 
         $params = array();
+        $params['swid'] = $this->swid;
         if ($this->action == 'new') {
             $params['action'] = 'new';
-            $params['swid'] = $this->swid;
             $params['wid'] = $this->wid;
             if ($this->title != get_string('newpage', 'wiki')) {
                 $params['title'] = $this->title;
             }
-            $PAGE->set_url($CFG->wwwroot . '/mod/wiki/create.php', $params);
         } else {
             $params['action'] = 'create';
-            $params['swid'] = $this->swid;
-            $PAGE->set_url($CFG->wwwroot . '/mod/wiki/create.php', $params);
         }
+        $PAGE->set_url(new moodle_url('/mod/wiki/create.php', $params));
     }
 
     function set_format($format) {
@@ -892,14 +898,18 @@ class page_wiki_create extends page_wiki {
         $this->swid = $swid;
     }
 
+    function set_availablegroups($group) {
+        $this->groups = $group;
+    }
+
     function set_action($action) {
         global $PAGE;
         $this->action = $action;
 
         require_once(dirname(__FILE__) . '/create_form.php');
-        $url = new moodle_url('/mod/wiki/create.php', array('action' => 'create', 'wid' => $PAGE->activityrecord->id, 'gid' => $this->gid, 'uid' => $this->uid));
+        $url = new moodle_url('/mod/wiki/create.php', array('action' => 'create', 'wid' => $PAGE->activityrecord->id, 'group' => $this->gid, 'uid' => $this->uid));
         $formats = wiki_get_formats();
-        $options = array('formats' => $formats, 'defaultformat' => $PAGE->activityrecord->defaultformat, 'forceformat' => $PAGE->activityrecord->forceformat);
+        $options = array('formats' => $formats, 'defaultformat' => $PAGE->activityrecord->defaultformat, 'forceformat' => $PAGE->activityrecord->forceformat, 'groups' => $this->groups);
         if ($this->title != get_string('newpage', 'wiki')) {
             $options['disable_pagetitle'] = true;
         }
@@ -908,7 +918,7 @@ class page_wiki_create extends page_wiki {
 
     protected function create_navbar() {
         global $PAGE;
-
+        // navigation_node::get_content formats this before printing.
         $PAGE->navbar->add($this->title);
     }
 
@@ -928,11 +938,20 @@ class page_wiki_create extends page_wiki {
     }
 
     function create_page($pagetitle) {
-        global $USER, $CFG, $PAGE;
+        global $USER, $PAGE;
+
         $data = $this->mform->get_data();
+        if (isset($data->groupinfo)) {
+            $groupid = $data->groupinfo;
+        } else {
+            $groupid = '0';
+        }
         if (empty($this->subwiki)) {
-            $swid = wiki_add_subwiki($PAGE->activityrecord->id, $this->gid, $this->uid);
-            $this->subwiki = wiki_get_subwiki($swid);
+            // If subwiki is not set then try find one and set else create one.
+            if (!$this->subwiki = wiki_get_subwiki_by_group($this->wid, $groupid)) {
+                $swid = wiki_add_subwiki($PAGE->activityrecord->id, $groupid, $this->uid);
+                $this->subwiki = wiki_get_subwiki($swid);
+            }
         }
         if ($data) {
             $this->set_title($data->pagetitle);
@@ -1009,10 +1028,14 @@ class page_wiki_preview extends page_wiki_edit {
         if (!empty($this->section)) {
             $url .= "&section=" . urlencode($this->section);
         }
-        $params = array('attachmentoptions' => page_wiki_edit::$attachmentoptions, 'format' => $this->format, 'version' => $this->versionnumber);
+        $params = array(
+            'attachmentoptions' => page_wiki_edit::$attachmentoptions,
+            'format' => $this->format,
+            'version' => $this->versionnumber,
+            'contextid' => $this->modcontext->id
+        );
 
         if ($this->format != 'html') {
-            $params['contextid'] = $this->modcontext->id;
             $params['component'] = 'mod_wiki';
             $params['filearea'] = 'attachments';
             $params['fileitemid'] = $this->page->id;
@@ -1502,10 +1525,10 @@ class page_wiki_map extends page_wiki {
                     $user = $users[$version->userid];
                 }
 
-                $link = wiki_parser_link(format_string($page->title), array('swid' => $swid));
+                $link = wiki_parser_link($page->title, array('swid' => $swid));
                 $class = ($link['new']) ? 'class="wiki_newentry"' : '';
 
-                $linkpage = '<a href="' . $link['url'] . '"' . $class . '>' . $link['content'] . '</a>';
+                $linkpage = '<a href="' . $link['url'] . '"' . $class . '>' . format_string($link['content'], true, array('context' => $this->modcontext)) . '</a>';
                 $icon = $OUTPUT->user_picture($user, array('popup' => true));
 
                 $table->data[] = array("$icon&nbsp;$linkpage");
@@ -1582,6 +1605,7 @@ class page_wiki_map extends page_wiki {
             $page = $fresh['page'];
         }
 
+        // navigation_node get_content calls format string for us
         $node = new navigation_node($page->title);
 
         $keys = array();
@@ -1616,15 +1640,14 @@ class page_wiki_map extends page_wiki {
         $strspecial = get_string('special', 'wiki');
 
         foreach ($pages as $page) {
-            $letter = strtoupper(substr($page->title, 0, 1));
-            if (preg_match('/[A-Z]/', $letter)) {
-                $stdaux->{
-                    $letter}
-                [] = wiki_parser_link($page);
+            // We need to format the title here to account for any filtering
+            $letter = format_string($page->title, true, array('context' => $this->modcontext));
+            $letter = textlib::substr($letter, 0, 1);
+            if (preg_match('/^[a-zA-Z]$/', $letter)) {
+                $letter = textlib::strtoupper($letter);
+                $stdaux->{$letter}[] = wiki_parser_link($page);
             } else {
-                $stdaux->{
-                    $strspecial}
-                [] = wiki_parser_link($page);
+                $stdaux->{$strspecial}[] = wiki_parser_link($page);
             }
         }
 
@@ -1635,7 +1658,7 @@ class page_wiki_map extends page_wiki {
         foreach ($stdaux as $key => $elem) {
             $table->data[] = array($key);
             foreach ($elem as $e) {
-                $table->data[] = array(html_writer::link($e['url'], $e['content']));
+                $table->data[] = array(html_writer::link($e['url'], format_string($e['content'], true, array('context' => $this->modcontext))));
             }
         }
         echo html_writer::table($table);
@@ -1993,11 +2016,15 @@ class page_wiki_save extends page_wiki_edit {
             $url .= "&section=" . urlencode($this->section);
         }
 
-        $params = array('attachmentoptions' => page_wiki_edit::$attachmentoptions, 'format' => $this->format, 'version' => $this->versionnumber);
+        $params = array(
+            'attachmentoptions' => page_wiki_edit::$attachmentoptions,
+            'format' => $this->format,
+            'version' => $this->versionnumber,
+            'contextid' => $this->modcontext->id
+        );
 
         if ($this->format != 'html') {
             $params['fileitemid'] = $this->page->id;
-            $params['contextid']  = $this->modcontext->id;
             $params['component']  = 'mod_wiki';
             $params['filearea']   = 'attachments';
         }
@@ -2043,8 +2070,8 @@ class page_wiki_save extends page_wiki_edit {
 
             //deleting old locks
             wiki_delete_locks($this->page->id, $USER->id, $this->section);
-
-            redirect($CFG->wwwroot . '/mod/wiki/view.php?pageid=' . $this->page->id);
+            $url = new moodle_url('view.php', array('pageid' => $this->page->id, 'group' => $this->subwiki->groupid));
+            redirect($url);
         } else {
             print_error('savingerror', 'wiki');
         }

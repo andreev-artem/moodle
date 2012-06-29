@@ -640,8 +640,8 @@ abstract class repository {
         $fileitemid = clean_param($params['itemid'],    PARAM_INT);
         $filename   = clean_param($params['filename'],  PARAM_FILE);
         $filepath   = clean_param($params['filepath'],  PARAM_PATH);;
-        $filearea   = clean_param($params['filearea'],  PARAM_ALPHAEXT);
-        $component  = clean_param($params['component'], PARAM_ALPHAEXT);
+        $filearea   = clean_param($params['filearea'],  PARAM_AREA);
+        $component  = clean_param($params['component'], PARAM_COMPONENT);
 
         $context    = get_context_instance_by_id($contextid);
         // the file needs to copied to draft area
@@ -1253,7 +1253,7 @@ abstract class repository {
             }
 
             $type = repository::get_type_by_id($i->options['typeid']);
-            $table->data[] = array($i->name, $type->get_readablename(), $settings, $delete);
+            $table->data[] = array(format_string($i->name), $type->get_readablename(), $settings, $delete);
 
             //display a grey row if the type is defined as not visible
             if (isset($type) && !$type->get_visible()) {
@@ -1318,14 +1318,14 @@ abstract class repository {
      */
     public function prepare_file($filename) {
         global $CFG;
-        if (!file_exists($CFG->dataroot.'/temp/download')) {
-            mkdir($CFG->dataroot.'/temp/download/', $CFG->directorypermissions, true);
+        if (!file_exists($CFG->tempdir.'/download')) {
+            mkdir($CFG->tempdir.'/download/', $CFG->directorypermissions, true);
         }
-        if (is_dir($CFG->dataroot.'/temp/download')) {
-            $dir = $CFG->dataroot.'/temp/download/';
+        if (is_dir($CFG->tempdir.'/download')) {
+            $dir = $CFG->tempdir.'/download/';
         }
         if (empty($filename)) {
-            $filename = uniqid('repo').'_'.time().'.tmp';
+            $filename = uniqid('repo', true).'_'.time().'.tmp';
         }
         if (file_exists($dir.$filename)) {
             $filename = uniqid('m').$filename;
@@ -1377,8 +1377,8 @@ abstract class repository {
         $fileitemid = clean_param($params['itemid'], PARAM_INT);
         $filename   = clean_param($params['filename'], PARAM_FILE);
         $filepath   = clean_param($params['filepath'], PARAM_PATH);
-        $filearea   = clean_param($params['filearea'], PARAM_SAFEDIR);
-        $component  = clean_param($params['component'], PARAM_ALPHAEXT);
+        $filearea   = clean_param($params['filearea'], PARAM_AREA);
+        $component  = clean_param($params['component'], PARAM_COMPONENT);
         $context    = get_context_instance_by_id($contextid);
         $file_info  = $browser->get_file_info($context, $component, $filearea, $fileitemid, $filepath, $filename);
         if (!empty($file_info)) {
@@ -1450,7 +1450,7 @@ abstract class repository {
         $ft = new filetype_parser;
         $meta = new stdClass();
         $meta->id   = $this->id;
-        $meta->name = $this->get_name();
+        $meta->name = format_string($this->get_name());
         $meta->type = $this->options['type'];
         $meta->icon = $OUTPUT->pix_url('icon', 'repository_'.$meta->type)->out(false);
         $meta->supported_types = $ft->get_extensions($this->supported_filetypes());
@@ -1609,7 +1609,7 @@ abstract class repository {
 
     public function filter(&$value) {
         $pass = false;
-        $accepted_types = optional_param('accepted_types', '', PARAM_RAW);
+        $accepted_types = optional_param_array('accepted_types', '', PARAM_RAW);
         $ft = new filetype_parser;
         //$ext = $ft->get_extensions($this->supported_filetypes());
         if (isset($value['children'])) {
@@ -1762,8 +1762,21 @@ abstract class repository {
             // it can be empty, then moodle will look for instance name from language string
             $mform->addElement('text', 'pluginname', get_string('pluginname', 'repository'), array('size' => '40'));
             $mform->addElement('static', 'pluginnamehelp', '', get_string('pluginnamehelp', 'repository'));
+            $mform->setType('pluginname', PARAM_TEXT);
         }
     }
+
+    /**
+     * Validate Admin Settings Moodle form
+     * @param object $mform Moodle form (passed by reference)
+     * @param array array of ("fieldname"=>value) of submitted data
+     * @param array array of ("fieldname"=>errormessage) of errors
+     * @return array array of errors
+     */
+    public static function type_form_validation($mform, $data, $errors) {
+        return $errors;
+    }
+
 
     /**
      * Edit/Create Instance Settings Moodle form
@@ -1795,8 +1808,8 @@ abstract class repository {
     }
 
     public function get_short_filename($str, $maxlength) {
-        if (strlen($str) >= $maxlength) {
-            return trim(substr($str, 0, $maxlength)).'...';
+        if (textlib::strlen($str) >= $maxlength) {
+            return trim(textlib::substr($str, 0, $maxlength)).'...';
         } else {
             return $str;
         }
@@ -1884,7 +1897,7 @@ final class repository_instance_form extends moodleform {
         $mform->addElement('hidden', 'new',   $this->plugin);
         $mform->setType('new', PARAM_FORMAT);
         $mform->addElement('hidden', 'plugin', $this->plugin);
-        $mform->setType('plugin', PARAM_SAFEDIR);
+        $mform->setType('plugin', PARAM_PLUGIN);
         $mform->addElement('hidden', 'typeid', $this->typeid);
         $mform->setType('typeid', PARAM_INT);
         $mform->addElement('hidden', 'contextid', $this->contextid);
@@ -1892,6 +1905,7 @@ final class repository_instance_form extends moodleform {
 
         $mform->addElement('text', 'name', get_string('name'), 'maxlength="100" size="30"');
         $mform->addRule('name', $strrequired, 'required', null, 'client');
+        $mform->setType('name', PARAM_TEXT);
     }
 
     public function definition() {
@@ -1998,7 +2012,7 @@ final class repository_type_form extends moodleform {
         $mform->addElement('hidden', 'action', $this->action);
         $mform->setType('action', PARAM_TEXT);
         $mform->addElement('hidden', 'repos', $this->plugin);
-        $mform->setType('repos', PARAM_SAFEDIR);
+        $mform->setType('repos', PARAM_PLUGIN);
 
         // let the plugin add its specific fields
         $classname = 'repository_' . $this->plugin;
@@ -2048,6 +2062,21 @@ final class repository_type_form extends moodleform {
         }
 
         $this->add_action_buttons(true, get_string('save','repository'));
+    }
+
+    public function validation($data) {
+        $errors = array();
+        $plugin = $this->_customdata['plugin'];
+        $instance = (isset($this->_customdata['instance'])
+                && is_subclass_of($this->_customdata['instance'], 'repository'))
+            ? $this->_customdata['instance'] : null;
+        if (!$instance) {
+            $errors = repository::static_function($plugin, 'type_form_validation', $this, $data, $errors);
+        } else {
+            $errors = $instance->type_form_validation($this, $data, $errors);
+        }
+
+        return $errors;
     }
 }
 

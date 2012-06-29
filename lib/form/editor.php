@@ -276,7 +276,7 @@ class MoodleQuickForm_editor extends HTML_QuickForm_element {
         return $str;
     }
 
-    /**
+     /**
      * What to display when element is frozen.
      *
      * @return empty string

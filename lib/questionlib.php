@@ -343,7 +343,7 @@ function question_delete_question($questionid) {
 /**
  * All question categories and their questions are deleted for this course.
  *
- * @param object $mod an object representing the activity
+ * @param stdClass $course an object representing the activity
  * @param boolean $feedback to specify if the process must output a summary of its work
  * @return boolean
  */
@@ -844,17 +844,6 @@ function question_hash($question) {
 
 /// FUNCTIONS THAT SIMPLY WRAP QUESTIONTYPE METHODS //////////////////////////////////
 /**
- * Get anything that needs to be included in the head of the question editing page
- * for a particular question type. This function is called by question/question.php.
- *
- * @param $question A question object. Only $question->qtype is used.
- * @return string Deprecated. Some HTML code that can go inside the head tag.
- */
-function question_get_editing_head_contributions($question) {
-    question_bank::get_qtype($question->qtype, false)->get_editing_head_contributions();
-}
-
-/**
  * Saves question options
  *
  * Simply calls the question type specific save_question_options() method.
@@ -1058,10 +1047,13 @@ function question_make_default_categories($contexts) {
         } else {
             $category = question_get_default_category($context->id);
         }
-        if ($preferredlevels[$context->contextlevel] > $preferredness && has_any_capability(
-                array('moodle/question:usemine', 'moodle/question:useall'), $context)) {
+        $thispreferredness = $preferredlevels[$context->contextlevel];
+        if (has_any_capability(array('moodle/question:usemine', 'moodle/question:useall'), $context)) {
+            $thispreferredness += 10;
+        }
+        if ($thispreferredness > $preferredness) {
             $toreturn = $category;
-            $preferredness = $preferredlevels[$context->contextlevel];
+            $preferredness = $thispreferredness;
         }
     }
 
@@ -1194,33 +1186,27 @@ function question_categorylist($categoryid) {
  */
 function get_import_export_formats($type) {
     global $CFG;
+    require_once($CFG->dirroot . '/question/format.php');
 
-    $fileformats = get_plugin_list('qformat');
+    $formatclasses = get_plugin_list_with_class('qformat', '', 'format.php');
 
     $fileformatname = array();
-    require_once($CFG->dirroot . '/question/format.php');
-    foreach ($fileformats as $fileformat => $fdir) {
-        $formatfile = $fdir . '/format.php';
-        if (is_readable($formatfile)) {
-            include_once($formatfile);
-        } else {
-            continue;
-        }
+    foreach ($formatclasses as $component => $formatclass) {
 
-        $classname = 'qformat_' . $fileformat;
-        $formatclass = new $classname();
+        $format = new $formatclass();
         if ($type == 'import') {
-            $provided = $formatclass->provide_import();
+            $provided = $format->provide_import();
         } else {
-            $provided = $formatclass->provide_export();
+            $provided = $format->provide_export();
         }
 
         if ($provided) {
-            $fileformatnames[$fileformat] = get_string($fileformat, 'qformat_' . $fileformat);
+            list($notused, $fileformat) = explode('_', $component, 2);
+            $fileformatnames[$fileformat] = get_string('pluginname', $component);
         }
     }
 
-    textlib_get_instance()->asort($fileformatnames);
+    collatorlib::asort($fileformatnames);
     return $fileformatnames;
 }
 
@@ -1498,6 +1484,14 @@ function question_get_all_capabilities() {
     return $caps;
 }
 
+
+/**
+ * Tracks all the contexts related to the one where we are currently editing
+ * questions, and provides helper methods to check permissions.
+ *
+ * @copyright 2007 Jamie Pratt me@jamiep.org
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class question_edit_contexts {
 
     public static $caps = array(
@@ -1524,28 +1518,27 @@ class question_edit_contexts {
     protected $allcontexts;
 
     /**
-     * @param current context
+     * Constructor
+     * @param context the current context.
      */
-    public function __construct($thiscontext) {
-        $pcontextids = get_parent_contexts($thiscontext);
-        $contexts = array($thiscontext);
-        foreach ($pcontextids as $pcontextid) {
-            $contexts[] = get_context_instance_by_id($pcontextid);
-        }
-        $this->allcontexts = $contexts;
+    public function __construct(context $thiscontext) {
+        $this->allcontexts = array_values($thiscontext->get_parent_contexts(true));
     }
+
     /**
      * @return array all parent contexts
      */
     public function all() {
         return $this->allcontexts;
     }
+
     /**
      * @return object lowest context which must be either the module or course context
      */
     public function lowest() {
         return $this->allcontexts[0];
     }
+
     /**
      * @param string $cap capability
      * @return array parent contexts having capability, zero based index
@@ -1559,6 +1552,7 @@ class question_edit_contexts {
         }
         return $contextswithcap;
     }
+
     /**
      * @param array $caps capabilities
      * @return array parent contexts having at least one of $caps, zero based index
@@ -1575,6 +1569,7 @@ class question_edit_contexts {
         }
         return $contextswithacap;
     }
+
     /**
      * @param string $tabname edit tab name
      * @return array parent contexts having at least one of $caps, zero based index
@@ -1582,6 +1577,24 @@ class question_edit_contexts {
     public function having_one_edit_tab_cap($tabname) {
         return $this->having_one_cap(self::$caps[$tabname]);
     }
+
+    /**
+     * @return those contexts where a user can add a question and then use it.
+     */
+    public function having_add_and_use() {
+        $contextswithcap = array();
+        foreach ($this->allcontexts as $context) {
+            if (!has_capability('moodle/question:add', $context)) {
+                continue;
+            }
+            if (!has_any_capability(array('moodle/question:useall', 'moodle/question:usemine'), $context)) {
+                            continue;
+            }
+            $contextswithcap[] = $context;
+        }
+        return $contextswithcap;
+    }
+
     /**
      * Has at least one parent context got the cap $cap?
      *
@@ -1651,6 +1664,7 @@ class question_edit_contexts {
         }
     }
 }
+
 
 /**
  * Helps call file_rewrite_pluginfile_urls with the right parameters.

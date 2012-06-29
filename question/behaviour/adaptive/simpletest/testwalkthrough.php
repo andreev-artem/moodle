@@ -51,6 +51,18 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
         return new NoPatternExpectation($penaltypattern);
     }
 
+    protected function get_contains_total_penalty_expectation($penalty) {
+        $penaltyinfo = get_string('gradingdetailspenaltytotal', 'qbehaviour_adaptive',
+                                  format_float($penalty, $this->displayoptions->markdp));
+        return new PatternExpectation('/'.preg_quote($penaltyinfo).'/');
+    }
+
+    protected function get_does_not_contain_total_penalty_expectation() {
+        $penaltyinfo = get_string('gradingdetailspenaltytotal', 'qbehaviour_adaptive', 'XXXXX');
+        $penaltypattern = '/'.str_replace('XXXXX', '\\w*', preg_quote($penaltyinfo)).'/';
+        return new NoPatternExpectation($penaltypattern);
+    }
+
     protected function get_contains_disregarded_info_expectation() {
         $penaltyinfo = get_string('disregardedwithoutpenalty', 'qbehaviour_adaptive');
         return new PatternExpectation('/'.preg_quote($penaltyinfo).'/');
@@ -95,7 +107,8 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_mc_radio_expectation(($wrongindex + 1) % 3, true, false),
                 $this->get_contains_mc_radio_expectation(($wrongindex + 2) % 3, true, false),
                 $this->get_contains_incorrect_expectation(),
-                $this->get_contains_penalty_info_expectation(1.00));
+                $this->get_contains_penalty_info_expectation(1.00),
+                $this->get_does_not_contain_total_penalty_expectation());
         $this->assertPattern('/B|C/',
                 $this->quba->get_response_summary($this->slot));
 
@@ -125,7 +138,8 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_mc_radio_expectation(($rightindex + 1) % 3, true, false),
                 $this->get_contains_mc_radio_expectation(($rightindex + 2) % 3, true, false),
                 $this->get_contains_correct_expectation(),
-                $this->get_does_not_contain_penalty_info_expectation());
+                $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation());
         $this->assertEqual('A',
                 $this->quba->get_response_summary($this->slot));
 
@@ -196,7 +210,8 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_mark_summary(2),
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_correct_expectation(),
-                $this->get_does_not_contain_penalty_info_expectation());
+                $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation());
 
         // Save the same correct answer again. Should not do anything.
         $numsteps = $this->get_step_count();
@@ -245,6 +260,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_partcorrect_expectation(),
                 $this->get_contains_penalty_info_expectation(0.33),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit an incorrect answer.
@@ -258,6 +274,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
                 $this->get_contains_penalty_info_expectation(0.33),
+                $this->get_contains_total_penalty_expectation(0.67),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit a correct answer.
@@ -271,6 +288,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_correct_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Finish the attempt.
@@ -290,7 +308,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
 
         // Create a short answer question
         $sa = test_question_maker::make_question('shortanswer');
-        $this->start_attempt_at_question($sa, 'adaptive');
+        $this->start_attempt_at_question($sa, 'adaptive', 6);
 
         // Check the initial state.
         $this->check_current_state(question_state::$todo);
@@ -310,7 +328,8 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_mark_summary(0),
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
-                $this->get_contains_penalty_info_expectation(0.33),
+                $this->get_contains_penalty_info_expectation(2.00),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit the same wrong answer again. Nothing should change.
@@ -323,7 +342,8 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_mark_summary(0),
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
-                $this->get_contains_penalty_info_expectation(0.33),
+                $this->get_contains_penalty_info_expectation(2.00),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit a correct answer.
@@ -331,12 +351,13 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
 
         // Verify.
         $this->check_current_state(question_state::$complete);
-        $this->check_current_mark(0.66666667);
+        $this->check_current_mark(4.00);
         $this->check_current_output(
-                $this->get_contains_mark_summary(0.67),
+                $this->get_contains_mark_summary(4.00),
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_correct_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit another incorrect answer.
@@ -344,12 +365,13 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
 
         // Verify.
         $this->check_current_state(question_state::$complete);
-        $this->check_current_mark(0.66666667);
+        $this->check_current_mark(4.00);
         $this->check_current_output(
-                $this->get_contains_mark_summary(0.67),
+                $this->get_contains_mark_summary(4.00),
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Finish the attempt.
@@ -357,9 +379,9 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
 
         // Verify.
         $this->check_current_state(question_state::$gradedwrong);
-        $this->check_current_mark(0.66666667);
+        $this->check_current_mark(4.00);
         $this->check_current_output(
-                $this->get_contains_mark_summary(0.67),
+                $this->get_contains_mark_summary(4.00),
                 $this->get_contains_submit_button_expectation(false),
                 $this->get_contains_incorrect_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
@@ -390,6 +412,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
                 $this->get_contains_penalty_info_expectation(0.33),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit a correct answer.
@@ -403,6 +426,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_correct_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit an empty answer.
@@ -415,6 +439,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_mark_summary(0.67),
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_contains_validation_error_expectation());
 
         // Submit another wrong answer.
@@ -428,6 +453,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Finish the attempt.
@@ -440,6 +466,63 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_mark_summary(0.67),
                 $this->get_contains_submit_button_expectation(false),
                 $this->get_contains_incorrect_expectation(),
+                $this->get_does_not_contain_validation_error_expectation());
+    }
+
+    public function test_adaptive_shortanswer_zero_penalty() {
+
+        // Create a short answer question
+        $sa = test_question_maker::make_question('shortanswer');
+        // Disable penalties for this question
+        $sa->penalty = 0;
+        $this->start_attempt_at_question($sa, 'adaptive');
+
+        // Check the initial state.
+        $this->check_current_state(question_state::$todo);
+        $this->check_current_mark(null);
+        $this->check_current_output(
+                $this->get_contains_marked_out_of_summary(),
+                $this->get_contains_submit_button_expectation(true),
+                $this->get_does_not_contain_feedback_expectation());
+
+        // Submit a wrong answer.
+        $this->process_submission(array('-submit' => 1, 'answer' => 'hippopotamus'));
+
+        // Verify.
+        $this->check_current_state(question_state::$todo);
+        $this->check_current_mark(0);
+        $this->check_current_output(
+                $this->get_contains_mark_summary(0),
+                $this->get_contains_submit_button_expectation(true),
+                $this->get_contains_incorrect_expectation(),
+                $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
+                $this->get_does_not_contain_validation_error_expectation());
+
+        // Submit a correct answer.
+        $this->process_submission(array('-submit' => 1, 'answer' => 'frog'));
+
+        // Verify.
+        $this->check_current_state(question_state::$complete);
+        $this->check_current_mark(1.0);
+        $this->check_current_output(
+                $this->get_contains_mark_summary(1.0),
+                $this->get_contains_submit_button_expectation(true),
+                $this->get_contains_correct_expectation(),
+                $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
+                $this->get_does_not_contain_validation_error_expectation());
+
+        // Finish the attempt.
+        $this->quba->finish_all_questions();
+
+        // Verify.
+        $this->check_current_state(question_state::$gradedright);
+        $this->check_current_mark(1.0);
+        $this->check_current_output(
+                $this->get_contains_mark_summary(1.0),
+                $this->get_contains_submit_button_expectation(false),
+                $this->get_contains_correct_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
     }
 
@@ -468,6 +551,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_does_not_contain_correctness_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_contains_validation_error_expectation(),
                 $this->get_contains_disregarded_info_expectation());
         $this->assertNull($this->quba->get_response_summary($this->slot));
@@ -483,6 +567,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_partcorrect_expectation(),
                 $this->get_contains_penalty_info_expectation(0.33),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Now submit blank again.
@@ -496,6 +581,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_does_not_contain_correctness_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_contains_validation_error_expectation());
     }
 
@@ -524,6 +610,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_correct_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Submit an incorrect answer.
@@ -537,6 +624,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation());
 
         // Finish the attempt.
@@ -578,6 +666,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_does_not_contain_correctness_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_contains_validation_error_expectation(),
                 $this->get_contains_disregarded_info_expectation());
 
@@ -592,6 +681,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_incorrect_expectation(),
                 $this->get_contains_penalty_info_expectation(0.1),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation(),
                 $this->get_does_not_contain_disregarded_info_expectation());
 
@@ -606,6 +696,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_does_not_contain_correctness_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_contains_validation_error_expectation(),
                 $this->get_contains_disregarded_info_expectation());
 
@@ -620,6 +711,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_contains_correct_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_does_not_contain_validation_error_expectation(),
                 $this->get_does_not_contain_disregarded_info_expectation());
 
@@ -634,6 +726,7 @@ class qbehaviour_adaptive_walkthrough_test extends qbehaviour_walkthrough_test_b
                 $this->get_contains_submit_button_expectation(true),
                 $this->get_does_not_contain_correctness_expectation(),
                 $this->get_does_not_contain_penalty_info_expectation(),
+                $this->get_does_not_contain_total_penalty_expectation(),
                 $this->get_contains_validation_error_expectation(),
                 $this->get_contains_disregarded_info_expectation());
 

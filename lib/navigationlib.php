@@ -153,7 +153,7 @@ class navigation_node implements renderable {
                 $this->shorttext = $properties['shorttext'];
             }
             if (!array_key_exists('icon', $properties)) {
-                $properties['icon'] = new pix_icon('i/navigationitem', 'moodle');
+                $properties['icon'] = new pix_icon('i/navigationitem', '');
             }
             $this->icon = $properties['icon'];
             if ($this->icon instanceof pix_icon) {
@@ -1042,7 +1042,7 @@ class global_navigation extends navigation_node {
         } else {
             // The home element should be the site because the root node is my moodle
             $this->rootnodes['home'] = $this->add(get_string('sitehome'), new moodle_url('/'), self::TYPE_SETTING, null, 'home');
-            if ($CFG->defaulthomepage == HOMEPAGE_MY) {
+            if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_MY)) {
                 // We need to stop automatic redirection
                 $this->rootnodes['home']->action->param('redirect', '0');
             }
@@ -1126,10 +1126,9 @@ class global_navigation extends navigation_node {
 
                 // If the user is not enrolled then we only want to show the
                 // course node and not populate it.
-                $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
 
                 // Not enrolled, can't view, and hasn't switched roles
-                if (!can_access_course($coursecontext)) {
+                if (!can_access_course($course)) {
                     // TODO: very ugly hack - do not force "parents" to enrol into course their child is enrolled in,
                     // this hack has been propagated from user/view.php to display the navigation node. (MDL-25805)
                     $isparent = false;
@@ -1190,8 +1189,7 @@ class global_navigation extends navigation_node {
 
                 // If the user is not enrolled then we only want to show the
                 // course node and not populate it.
-                $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
-                if (!can_access_course($coursecontext)) {
+                if (!can_access_course($course)) {
                     $coursenode->make_active();
                     $canviewcourseprofile = false;
                     break;
@@ -1278,8 +1276,7 @@ class global_navigation extends navigation_node {
 
                 // If the user is not enrolled then we only want to show the
                 // course node and not populate it.
-                $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
-                if (!can_access_course($coursecontext)) {
+                if (!can_access_course($course)) {
                     $coursenode->make_active();
                     $canviewcourseprofile = false;
                     break;
@@ -1630,58 +1627,50 @@ class global_navigation extends navigation_node {
         global $CFG;
         require_once($CFG->dirroot.'/course/lib.php');
 
-        if (!$this->cache->cached('course_sections_'.$course->id) || !$this->cache->cached('course_activites_'.$course->id)) {
-            $modinfo = get_fast_modinfo($course);
-            $sections = array_slice(get_all_sections($course->id), 0, $course->numsections+1, true);
+        $modinfo = get_fast_modinfo($course);
 
-            $activities = array();
+        $sections = array_slice(get_all_sections($course->id), 0, $course->numsections+1, true);
+        $activities = array();
 
-            foreach ($sections as $key => $section) {
-                $sections[$key]->hasactivites = false;
-                if (!array_key_exists($section->section, $modinfo->sections)) {
+        foreach ($sections as $key => $section) {
+            $sections[$key]->hasactivites = false;
+            if (!array_key_exists($section->section, $modinfo->sections)) {
+                continue;
+            }
+            foreach ($modinfo->sections[$section->section] as $cmid) {
+                $cm = $modinfo->cms[$cmid];
+                if (!$cm->uservisible) {
                     continue;
                 }
-                foreach ($modinfo->sections[$section->section] as $cmid) {
-                    $cm = $modinfo->cms[$cmid];
-                    if (!$cm->uservisible) {
-                        continue;
-                    }
-                    $activity = new stdClass;
-                    $activity->section = $section->section;
-                    $activity->name = $cm->name;
-                    $activity->icon = $cm->icon;
-                    $activity->iconcomponent = $cm->iconcomponent;
-                    $activity->id = $cm->id;
-                    $activity->hidden = (!$cm->visible);
-                    $activity->modname = $cm->modname;
-                    $activity->nodetype = navigation_node::NODETYPE_LEAF;
-                    $activity->onclick = $cm->get_on_click();
-                    if (empty($activity->onclick) && !empty($cm->extra) && preg_match('/onclick=(\'|")([^\1]+)\1/', $cm->extra, $matches)) {
-                        $activity->onclick = $matches[2];
-                    }
-                    $url = $cm->get_url();
-                    if (!$url) {
-                        $activity->url = null;
-                        $activity->display = false;
-                    } else {
-                        $activity->url = $cm->get_url()->out();
-                        $activity->display = true;
-                        if (self::module_extends_navigation($cm->modname)) {
-                            $activity->nodetype = navigation_node::NODETYPE_BRANCH;
-                        }
-                    }
-                    $activities[$cmid] = $activity;
-                    if ($activity->display) {
-                        $sections[$key]->hasactivites = true;
+                $activity = new stdClass;
+                $activity->id = $cm->id;
+                $activity->course = $course->id;
+                $activity->section = $section->section;
+                $activity->name = $cm->name;
+                $activity->icon = $cm->icon;
+                $activity->iconcomponent = $cm->iconcomponent;
+                $activity->hidden = (!$cm->visible);
+                $activity->modname = $cm->modname;
+                $activity->nodetype = navigation_node::NODETYPE_LEAF;
+                $activity->onclick = $cm->get_on_click();
+                $url = $cm->get_url();
+                if (!$url) {
+                    $activity->url = null;
+                    $activity->display = false;
+                } else {
+                    $activity->url = $cm->get_url()->out();
+                    $activity->display = true;
+                    if (self::module_extends_navigation($cm->modname)) {
+                        $activity->nodetype = navigation_node::NODETYPE_BRANCH;
                     }
                 }
+                $activities[$cmid] = $activity;
+                if ($activity->display) {
+                    $sections[$key]->hasactivites = true;
+                }
             }
-            $this->cache->set('course_sections_'.$course->id, $sections);
-            $this->cache->set('course_activites_'.$course->id, $activities);
-        } else {
-            $sections = $this->cache->{'course_sections_'.$course->id};
-            $activities = $this->cache->{'course_activites_'.$course->id};
         }
+
         return array($sections, $activities);
     }
 
@@ -1701,8 +1690,19 @@ class global_navigation extends navigation_node {
 
         $namingfunction = 'callback_'.$courseformat.'_get_section_name';
         $namingfunctionexists = (function_exists($namingfunction));
-        $activesection = course_get_display($course->id);
+
         $viewhiddensections = has_capability('moodle/course:viewhiddensections', $this->page->context);
+
+        $urlfunction = 'callback_'.$courseformat.'_get_section_url';
+        if (empty($CFG->navlinkcoursesections) || !function_exists($urlfunction)) {
+            $urlfunction = null;
+        }
+
+        $keyfunction = 'callback_'.$courseformat.'_request_key';
+        $key = course_get_display($course->id);
+        if (defined('AJAX_SCRIPT') && AJAX_SCRIPT == '0' && function_exists($keyfunction) && $this->page->url->compare(new moodle_url('/course/view.php'), URL_MATCH_BASE)) {
+            $key = optional_param($keyfunction(), $key, PARAM_INT);
+        }
 
         $navigationsections = array();
         foreach ($sections as $sectionid => $section) {
@@ -1719,13 +1719,16 @@ class global_navigation extends navigation_node {
                 } else {
                     $sectionname = get_string('section').' '.$section->section;
                 }
-                //$url = new moodle_url('/course/view.php', array('id'=>$course->id));
+
                 $url = null;
+                if (!empty($urlfunction)) {
+                    $url = $urlfunction($course->id, $section->section);
+                }
                 $sectionnode = $coursenode->add($sectionname, $url, navigation_node::TYPE_SECTION, null, $section->id);
                 $sectionnode->nodetype = navigation_node::NODETYPE_BRANCH;
                 $sectionnode->hidden = (!$section->visible);
-                if ($this->page->context->contextlevel != CONTEXT_MODULE && $section->hasactivites && ($sectionnode->isactive || ($activesection && $section->section == $activesection))) {
-                    $sectionnode->force_open();
+                if ($key != '0' && $section->section != '0' && $section->section == $key && $this->page->context->contextlevel != CONTEXT_MODULE && $section->hasactivites) {
+                    $sectionnode->make_active();
                     $this->load_section_activities($sectionnode, $section->section, $activities);
                 }
                 $section->sectionnode = $sectionnode;
@@ -1857,6 +1860,7 @@ class global_navigation extends navigation_node {
             $cm = $modinfo->get_cm($cm->id);
         }
 
+        $activity->nodetype = navigation_node::NODETYPE_LEAF;
         $activity->make_active();
         $file = $CFG->dirroot.'/mod/'.$cm->modname.'/lib.php';
         $function = $cm->modname.'_extend_navigation';
@@ -1866,18 +1870,26 @@ class global_navigation extends navigation_node {
             if (function_exists($function)) {
                 $activtyrecord = $DB->get_record($cm->modname, array('id' => $cm->instance), '*', MUST_EXIST);
                 $function($activity, $course, $activtyrecord, $cm);
-                return true;
             }
         }
-        $activity->nodetype = navigation_node::NODETYPE_LEAF;
-        return false;
+
+        // Allow the active advanced grading method plugin to append module navigation
+        $featuresfunc = $cm->modname.'_supports';
+        if (function_exists($featuresfunc) && $featuresfunc(FEATURE_ADVANCED_GRADING)) {
+            require_once($CFG->dirroot.'/grade/grading/lib.php');
+            $gradingman = get_grading_manager($cm->context, $cm->modname);
+            $gradingman->extend_navigation($this, $activity);
+        }
+
+        return $activity->has_children();
     }
     /**
-     * Loads user specific information into the navigation in the appopriate place.
+     * Loads user specific information into the navigation in the appropriate place.
      *
      * If no user is provided the current user is assumed.
      *
      * @param stdClass $user
+     * @param bool $forceforcontext probably force something to be loaded somewhere (ask SamH if not sure what this means)
      * @return bool
      */
     protected function load_for_user($user=null, $forceforcontext=false) {
@@ -1920,6 +1932,9 @@ class global_navigation extends navigation_node {
         if ($iscurrentuser && !$forceforcontext) {
             // If it's the current user the information will go under the profile root node
             $usernode = $this->rootnodes['myprofile'];
+            $course = get_site();
+            $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
+            $issitecourse = true;
         } else {
             if (!$issitecourse) {
                 // Not the current user so add it to the participants node for the current course
@@ -1960,12 +1975,14 @@ class global_navigation extends navigation_node {
             }
         }
 
-        // Add nodes for forum posts and discussions if the user can view either or both
-        // There are no capability checks here as the content of the page is based
-        // purely on the forums the current user has access too.
-        $forumtab = $usernode->add(get_string('forumposts', 'forum'));
-        $forumtab->add(get_string('posts', 'forum'), new moodle_url('/mod/forum/user.php', $baseargs));
-        $forumtab->add(get_string('discussions', 'forum'), new moodle_url('/mod/forum/user.php', array_merge($baseargs, array('mode'=>'discussions'))));
+        if (!empty($CFG->navadduserpostslinks)) {
+            // Add nodes for forum posts and discussions if the user can view either or both
+            // There are no capability checks here as the content of the page is based
+            // purely on the forums the current user has access too.
+            $forumtab = $usernode->add(get_string('forumposts', 'forum'));
+            $forumtab->add(get_string('posts', 'forum'), new moodle_url('/mod/forum/user.php', $baseargs));
+            $forumtab->add(get_string('discussions', 'forum'), new moodle_url('/mod/forum/user.php', array_merge($baseargs, array('mode'=>'discussions'))));
+        }
 
         // Add blog nodes
         if (!empty($CFG->bloglevel)) {
@@ -2001,7 +2018,7 @@ class global_navigation extends navigation_node {
 
         $context = get_context_instance(CONTEXT_USER, $USER->id);
         if ($iscurrentuser && has_capability('moodle/user:manageownfiles', $context)) {
-            $url = new moodle_url('/user/files.php');
+            $url = new moodle_url('/user/filesedit.php');
             $usernode->add(get_string('myfiles'), $url, self::TYPE_SETTING);
         }
 
@@ -2014,44 +2031,15 @@ class global_navigation extends navigation_node {
             $usernode->add(get_string('notes', 'notes'), $url);
         }
 
-        // Add a reports tab and then add reports the the user has permission to see.
-        $anyreport      = has_capability('moodle/user:viewuseractivitiesreport', $usercontext);
-
-        $outlinetreport = ($anyreport || has_capability('coursereport/outline:view', $coursecontext));
-        $logtodayreport = ($anyreport || has_capability('coursereport/log:viewtoday', $coursecontext));
-        $logreport      = ($anyreport || has_capability('coursereport/log:view', $coursecontext));
-        $statsreport    = ($anyreport || has_capability('coursereport/stats:view', $coursecontext));
-
-        $somereport     = $outlinetreport || $logtodayreport || $logreport || $statsreport;
-
-        $viewreports = ($anyreport || $somereport || ($course->showreports && $iscurrentuser && $forceforcontext));
-        if ($viewreports) {
-            $reporttab = $usernode->add(get_string('activityreports'));
-            $reportargs = array('user'=>$user->id);
-            if (!empty($course->id)) {
-                $reportargs['id'] = $course->id;
-            } else {
-                $reportargs['id'] = SITEID;
-            }
-            if ($viewreports || $outlinetreport) {
-                $reporttab->add(get_string('outlinereport'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'outline'))));
-                $reporttab->add(get_string('completereport'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'complete'))));
-            }
-
-            if ($viewreports || $logtodayreport) {
-                $reporttab->add(get_string('todaylogs'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'todaylogs'))));
-            }
-
-            if ($viewreports || $logreport ) {
-                $reporttab->add(get_string('alllogs'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'alllogs'))));
-            }
-
-            if (!empty($CFG->enablestats)) {
-                if ($viewreports || $statsreport) {
-                    $reporttab->add(get_string('stats'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'stats'))));
-                }
-            }
-
+        // Add reports node
+        $reporttab = $usernode->add(get_string('activityreports'));
+        $reports = get_plugin_list_with_function('report', 'extend_navigation_user', 'lib.php');
+        foreach ($reports as $reportfunction) {
+            $reportfunction($reporttab, $user, $course);
+        }
+        $anyreport = has_capability('moodle/user:viewuseractivitiesreport', $usercontext);
+        if ($anyreport || ($course->showreports && $iscurrentuser && $forceforcontext)) {
+            // Add grade hardcoded grade report if necessary
             $gradeaccess = false;
             if (has_capability('moodle/grade:viewall', $coursecontext)) {
                 //ok - can view all course grades
@@ -2069,13 +2057,11 @@ class global_navigation extends navigation_node {
                 }
             }
             if ($gradeaccess) {
-                $reporttab->add(get_string('grade'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'grade'))));
+                $reporttab->add(get_string('grade'), new moodle_url('/course/user.php', array('mode'=>'grade', 'id'=>$course->id, 'user'=>$usercontext->instanceid)));
             }
-
-            // Check the number of nodes in the report node... if there are none remove
-            // the node
-            $reporttab->trim_if_empty();
         }
+        // Check the number of nodes in the report node... if there are none remove the node
+        $reporttab->trim_if_empty();
 
         // If the user is the current user add the repositories for the current user
         $hiddenfields = array_flip(explode(',', $CFG->hiddenuserfields));
@@ -2128,34 +2114,18 @@ class global_navigation extends navigation_node {
                     $usercoursenode->add(get_string('notes', 'notes'), $url, self::TYPE_SETTING);
                 }
 
-                if (can_access_course(get_context_instance(CONTEXT_COURSE, $usercourse->id), $user->id)) {
+                if (can_access_course($usercourse, $user->id)) {
                     $usercoursenode->add(get_string('entercourse'), new moodle_url('/course/view.php', array('id'=>$usercourse->id)), self::TYPE_SETTING, null, null, new pix_icon('i/course', ''));
                 }
 
-                $outlinetreport = ($anyreport || has_capability('coursereport/outline:view', $usercoursecontext));
-                $logtodayreport = ($anyreport || has_capability('coursereport/log:viewtoday', $usercoursecontext));
-                $logreport =      ($anyreport || has_capability('coursereport/log:view', $usercoursecontext));
-                $statsreport =    ($anyreport || has_capability('coursereport/stats:view', $usercoursecontext));
-                if ($outlinetreport || $logtodayreport || $logreport || $statsreport) {
-                    $reporttab = $usercoursenode->add(get_string('activityreports'));
-                    $reportargs = array('user'=>$user->id, 'id'=>$usercourse->id);
-                    if ($outlinetreport) {
-                        $reporttab->add(get_string('outlinereport'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'outline'))));
-                        $reporttab->add(get_string('completereport'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'complete'))));
-                    }
+                $reporttab = $usercoursenode->add(get_string('activityreports'));
 
-                    if ($logtodayreport) {
-                        $reporttab->add(get_string('todaylogs'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'todaylogs'))));
-                    }
-
-                    if ($logreport) {
-                        $reporttab->add(get_string('alllogs'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'alllogs'))));
-                    }
-
-                    if (!empty($CFG->enablestats) && $statsreport) {
-                        $reporttab->add(get_string('stats'), new moodle_url('/course/user.php', array_merge($reportargs, array('mode'=>'stats'))));
-                    }
+                $reports = get_plugin_list_with_function('report', 'extend_navigation_user', 'lib.php');
+                foreach ($reports as $reportfunction) {
+                    $reportfunction($reporttab, $user, $usercourse);
                 }
+
+                $reporttab->trim_if_empty();
             }
         }
         return true;
@@ -2231,7 +2201,9 @@ class global_navigation extends navigation_node {
         if ($issite) {
             $parent = $this;
             $url = null;
-            $shortname = get_string('sitepages');
+            if (empty($CFG->usesitenameforsitepages)) {
+                $shortname = get_string('sitepages');
+            }
         } else if ($ismycourse) {
             $parent = $this->rootnodes['mycourses'];
             $url = new moodle_url('/course/view.php', array('id'=>$course->id));
@@ -2326,8 +2298,8 @@ class global_navigation extends navigation_node {
 
         // View course reports
         if (has_capability('moodle/site:viewreports', $this->page->context)) { // basic capability for listing of reports
-            $reportnav = $coursenode->add(get_string('reports'), new moodle_url('/course/report.php', array('id'=>$course->id)), self::TYPE_CONTAINER, null, null, new pix_icon('i/stats', ''));
-            $coursereports = get_plugin_list('coursereport');
+            $reportnav = $coursenode->add(get_string('reports'), null, self::TYPE_CONTAINER, null, null, new pix_icon('i/stats', ''));
+            $coursereports = get_plugin_list('coursereport'); // deprecated
             foreach ($coursereports as $report=>$dir) {
                 $libfile = $CFG->dirroot.'/course/report/'.$report.'/lib.php';
                 if (file_exists($libfile)) {
@@ -2337,6 +2309,11 @@ class global_navigation extends navigation_node {
                         $reportfunction($reportnav, $course, $this->page->context);
                     }
                 }
+            }
+
+            $reports = get_plugin_list_with_function('report', 'extend_navigation_course', 'lib.php');
+            foreach ($reports as $reportfunction) {
+                $reportfunction($reportnav, $course, $this->page->context);
             }
         }
         return true;
@@ -2396,8 +2373,8 @@ class global_navigation extends navigation_node {
 
         // View course reports
         if (has_capability('moodle/site:viewreports', $this->page->context)) { // basic capability for listing of reports
-            $reportnav = $coursenode->add(get_string('reports'), new moodle_url('/course/report.php', array('id'=>$course->id)), self::TYPE_CONTAINER, null, null, new pix_icon('i/stats', ''));
-            $coursereports = get_plugin_list('coursereport');
+            $reportnav = $coursenode->add(get_string('reports'), null, self::TYPE_CONTAINER, null, null, new pix_icon('i/stats', ''));
+            $coursereports = get_plugin_list('coursereport'); // deprecated
             foreach ($coursereports as $report=>$dir) {
                 $libfile = $CFG->dirroot.'/course/report/'.$report.'/lib.php';
                 if (file_exists($libfile)) {
@@ -2407,6 +2384,11 @@ class global_navigation extends navigation_node {
                         $reportfunction($reportnav, $course, $this->page->context);
                     }
                 }
+            }
+
+            $reports = get_plugin_list_with_function('report', 'extend_navigation_course', 'lib.php');
+            foreach ($reports as $reportfunction) {
+                $reportfunction($reportnav, $course, $this->page->context);
             }
         }
         return true;
@@ -2564,7 +2546,7 @@ class global_navigation_for_ajax extends global_navigation {
                 break;
             case self::TYPE_COURSE :
                 $course = $DB->get_record('course', array('id' => $this->instanceid), '*', MUST_EXIST);
-                require_course_login($course);
+                require_course_login($course, true, null, false, true);
                 $this->page->set_context(get_context_instance(CONTEXT_COURSE, $course->id));
                 $coursenode = $this->add_course($course);
                 $this->add_course_essentials($coursenode, $course);
@@ -2578,7 +2560,7 @@ class global_navigation_for_ajax extends global_navigation {
                         LEFT JOIN {course_sections} cs ON cs.course = c.id
                         WHERE cs.id = ?';
                 $course = $DB->get_record_sql($sql, array($this->instanceid), MUST_EXIST);
-                require_course_login($course);
+                require_course_login($course, true, null, false, true);
                 $this->page->set_context(get_context_instance(CONTEXT_COURSE, $course->id));
                 $coursenode = $this->add_course($course);
                 $this->add_course_essentials($coursenode, $course);
@@ -2595,7 +2577,7 @@ class global_navigation_for_ajax extends global_navigation {
                 $course = $DB->get_record_sql($sql, $params, MUST_EXIST);
                 $modinfo = get_fast_modinfo($course);
                 $cm = $modinfo->get_cm($this->instanceid);
-                require_course_login($course, true, $cm);
+                require_course_login($course, true, $cm, false, true);
                 $this->page->set_context(get_context_instance(CONTEXT_MODULE, $cm->id));
                 $coursenode = $this->load_course($course);
                 if ($course->id == SITEID) {
@@ -2905,7 +2887,7 @@ class settings_navigation extends navigation_node {
         $context = $this->context;
         if ($context->contextlevel == CONTEXT_BLOCK) {
             $this->load_block_settings();
-            $context = $DB->get_record_sql('SELECT ctx.* FROM {block_instances} bi LEFT JOIN {context} ctx ON ctx.id=bi.parentcontextid WHERE bi.id=?', array($context->instanceid));
+            $context = $context->get_parent_context();
         }
 
         switch ($context->contextlevel) {
@@ -3484,12 +3466,11 @@ class settings_navigation extends navigation_node {
             $url = new moodle_url('/filter/manage.php', array('contextid'=>$this->page->cm->context->id));
             $modulenode->add(get_string('filters', 'admin'), $url, self::TYPE_SETTING, null, 'filtermanage');
         }
-
-        if (has_capability('coursereport/log:view', get_context_instance(CONTEXT_COURSE, $this->page->cm->course))) {
-            $url = new moodle_url('/course/report/log/index.php', array('chooselog'=>'1','id'=>$this->page->cm->course,'modid'=>$this->page->cm->id));
-            $modulenode->add(get_string('logs'), $url, self::TYPE_SETTING, null, 'logreport');
+        // Add reports
+        $reports = get_plugin_list_with_function('report', 'extend_navigation_module', 'lib.php');
+        foreach ($reports as $reportfunction) {
+            $reportfunction($modulenode, $this->page->cm);
         }
-
         // Add a backup link
         $featuresfunc = $this->page->activityname.'_supports';
         if (function_exists($featuresfunc) && $featuresfunc(FEATURE_BACKUP_MOODLE2) && has_capability('moodle/backup:backupactivity', $this->page->cm->context)) {
@@ -3502,6 +3483,14 @@ class settings_navigation extends navigation_node {
         if (function_exists($featuresfunc) && $featuresfunc(FEATURE_BACKUP_MOODLE2) && has_capability('moodle/restore:restoreactivity', $this->page->cm->context)) {
             $url = new moodle_url('/backup/restorefile.php', array('contextid'=>$this->page->cm->context->id));
             $modulenode->add(get_string('restore'), $url, self::TYPE_SETTING, null, 'restore');
+        }
+
+        // Allow the active advanced grading method plugin to append its settings
+        $featuresfunc = $this->page->activityname.'_supports';
+        if (function_exists($featuresfunc) && $featuresfunc(FEATURE_ADVANCED_GRADING) && has_capability('moodle/grade:managegradingforms', $this->page->cm->context)) {
+            require_once($CFG->dirroot.'/grade/grading/lib.php');
+            $gradingman = get_grading_manager($this->page->cm->context, $this->page->activityname);
+            $gradingman->extend_settings_navigation($this, $modulenode);
         }
 
         $function = $this->page->activityname.'_extend_settings_navigation';
@@ -3651,7 +3640,7 @@ class settings_navigation extends navigation_node {
             } else {
                 $canviewusercourse = has_capability('moodle/user:viewdetails', $coursecontext);
                 $canaccessallgroups = has_capability('moodle/site:accessallgroups', $coursecontext);
-                if ((!$canviewusercourse && !$canviewuser) || !can_access_course($coursecontext, $user->id)) {
+                if ((!$canviewusercourse && !$canviewuser) || !can_access_course($course, $user->id)) {
                     return false;
                 }
                 if (!$canaccessallgroups && groups_get_course_groupmode($course) == SEPARATEGROUPS) {

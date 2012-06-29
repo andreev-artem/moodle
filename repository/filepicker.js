@@ -657,13 +657,13 @@ M.core_filepicker.init = function(Y, options) {
                     params['author'] = author.get('value');
                 }
 
-                if (this.options.env == 'editor') {
+                if (this.options.externallink && this.options.env == 'editor') {
                     // in editor, images are stored in '/' only
                     params.savepath = '/';
                     // when image or media button is clicked
                     if ( this.options.return_types != 1 ) {
-                        var linkexternal = Y.one('#linkexternal-'+client_id).get('checked');
-                        if (linkexternal) {
+                        var linkexternal = Y.one('#linkexternal-'+client_id);
+                        if (linkexternal && linkexternal.get('checked')) {
                             params['linkexternal'] = 'yes';
                         }
                     } else {
@@ -1188,34 +1188,32 @@ M.core_filepicker.init = function(Y, options) {
                     scope.print_msg(M.str.repository.nofilesattached, 'error');
                     return false;
                 }
-                Y.use('io-upload-iframe', function() {
-                    scope.request({
-                            scope: scope,
-                            action:'upload',
-                            client_id: client_id,
-                            params: {'savepath':scope.options.savepath},
-                            repository_id: scope.active_repo.id,
-                            form: {id: id, upload:true},
-                            onerror: function(id, o, args) {
-                                scope.create_upload_form(data);
-                            },
-                            callback: function(id, o, args) {
-                                if (scope.options.editor_target&&scope.options.env=='editor') {
-                                    scope.options.editor_target.value=o.url;
-                                    scope.options.editor_target.onchange();
-                                }
-                                scope.hide();
-                                o.client_id = client_id;
-                                var formcallback_scope = null;
-                                if (args.scope.options.magicscope) {
-                                    formcallback_scope = args.scope.options.magicscope;
-                                } else {
-                                    formcallback_scope = args.scope;
-                                }
-                                scope.options.formcallback.apply(formcallback_scope, [o]);
+                scope.request({
+                        scope: scope,
+                        action:'upload',
+                        client_id: client_id,
+                        params: {'savepath':scope.options.savepath},
+                        repository_id: scope.active_repo.id,
+                        form: {id: id, upload:true},
+                        onerror: function(id, o, args) {
+                            scope.create_upload_form(data);
+                        },
+                        callback: function(id, o, args) {
+                            if (scope.options.editor_target&&scope.options.env=='editor') {
+                                scope.options.editor_target.value=o.url;
+                                scope.options.editor_target.onchange();
                             }
-                    }, true);
-                });
+                            scope.hide();
+                            o.client_id = client_id;
+                            var formcallback_scope = null;
+                            if (args.scope.options.magicscope) {
+                                formcallback_scope = args.scope.options.magicscope;
+                            } else {
+                                formcallback_scope = args.scope;
+                            }
+                            scope.options.formcallback.apply(formcallback_scope, [o]);
+                        }
+                }, true);
             }, this);
         },
         print_header: function() {

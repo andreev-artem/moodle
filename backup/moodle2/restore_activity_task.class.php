@@ -147,8 +147,16 @@ abstract class restore_activity_task extends restore_task {
             $this->add_step(new restore_comments_structure_step('activity_comments', 'comments.xml'));
         }
 
+        // Calendar events (conditionally)
+        if ($this->get_setting_value('calendarevents')) {
+            $this->add_step(new restore_calendarevents_structure_step('activity_calendar', 'calendar.xml'));
+        }
+
         // Grades (module-related, rest of gradebook is restored later if possible: cats, calculations...)
         $this->add_step(new restore_activity_grades_structure_step('activity_grades', 'grades.xml'));
+
+        // Advanced grading methods attached to the module
+        $this->add_step(new restore_activity_grading_structure_step('activity_grading', 'grading.xml'));
 
         // Userscompletion (conditionally)
         if ($this->get_setting_value('userscompletion')) {

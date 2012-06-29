@@ -29,6 +29,7 @@ define ('MESSAGE_SHORTLENGTH', 300);
 
 //$PAGE isnt set if we're being loaded by cron which doesnt display popups anyway
 if (isset($PAGE)) {
+    //TODO: this is a mega crazy hack - it is not acceptable to call anything when including lib!!! (skodak)
     $PAGE->set_popup_notification_allowed(false); // We are in a message window (so don't pop up a new one)
 }
 
@@ -77,6 +78,7 @@ define('MESSAGE_PERMITTED_MASK', 0x0c); // 1100
  */
 define('MESSAGE_DEFAULT_PERMITTED', 'permitted');
 
+//TODO: defaults must be initialised via settings - this is a bad hack! (skodak)
 if (!isset($CFG->message_contacts_refresh)) {  // Refresh the contacts list every 60 seconds
     $CFG->message_contacts_refresh = 60;
 }
@@ -1508,7 +1510,7 @@ function message_search_users($courseid, $searchtext, $sort='', $exceptions='') 
 
         // everyone who has a role assignment in this course or higher
         $params = array($USER->id, "%$searchtext%");
-        $users = $DB->get_records_sql("SELECT $ufields, mc.id as contactlistid, mc.blocked
+        $users = $DB->get_records_sql("SELECT DISTINCT $ufields, mc.id as contactlistid, mc.blocked
                                          FROM {user} u
                                          JOIN {role_assignments} ra ON ra.userid = u.id
                                          LEFT JOIN {message_contacts} mc
@@ -2415,4 +2417,26 @@ function translate_message_default_setting($plugindefault, $processorname) {
  */
 function message_page_type_list($pagetype, $parentcontext, $currentcontext) {
     return array('messages-*'=>get_string('page-message-x', 'message'));
+}
+
+/**
+ * Is $USER one of the supplied users?
+ *
+ * $user2 will be null if viewing a user's recent conversations
+ *
+ * @param stdClass the first user
+ * @param stdClass the second user or null
+ * @return bool True if the current user is one of either $user1 or $user2
+ */
+function message_current_user_is_involved($user1, $user2) {
+    global $USER;
+
+    if (empty($user1->id) || (!empty($user2) && empty($user2->id))) {
+        throw new coding_exception('Invalid user object detected. Missing id.');
+    }
+
+    if ($user1->id != $USER->id && (empty($user2) || $user2->id != $USER->id)) {
+        return false;
+    }
+    return true;
 }

@@ -129,7 +129,7 @@ function message_send($eventdata) {
         } else {
             //MDL-25114 They supplied an $eventdata->component $eventdata->name combination which doesn't
             //exist in the message_provider table (thus there is no default settings for them)
-            $preferrormsg = get_string('couldnotfindpreference', 'message', $preferencename);
+            $preferrormsg = get_string('couldnotfindpreference', 'message', $defaultpreference);
             throw new coding_exception($preferrormsg,'blah');
         }
 
@@ -142,9 +142,9 @@ function message_send($eventdata) {
             debugging('Attempt to force message delivery to user who has "'.$processor->name.'" output unconfigured', DEBUG_NORMAL);
         }
 
-        //warn developers that necessary data is missing regardless of how the processors are configured
+        // Warn developers that necessary data is missing regardless of how the processors are configured
         if (!isset($eventdata->userto->emailstop)) {
-            debugging('userto->emailstop is not set. Retreiving it from the user table');
+            debugging('userto->emailstop is not set. Retrieving it from the user table');
             $eventdata->userto->emailstop = $DB->get_field('user', 'emailstop', array('id'=>$eventdata->userto->id));
         }
 
@@ -153,8 +153,8 @@ function message_send($eventdata) {
             // An admin is forcing users to use this message processor. Use this processor unconditionally.
             $processorlist[] = $processor->name;
         } else if ($permitted == 'permitted' && $userisconfigured && !$eventdata->userto->emailstop) {
-            //user has not disabled notifications
-            //see if user set any notification preferences, otherwise use site default ones
+            // User has not disabled notifications
+            // See if user set any notification preferences, otherwise use site default ones
             $userpreferencename = 'message_provider_'.$preferencebase.'_'.$userstate;
             if ($userpreference = get_user_preferences($userpreferencename, null, $eventdata->userto->id)) {
                 if (in_array($processor->name, explode(',', $userpreference))) {
@@ -395,11 +395,23 @@ function message_get_providers_for_user($userid) {
         if (!empty($provider->capability)) {
             if (!has_capability($provider->capability, $systemcontext, $userid)) {
                 unset($providers[$providerid]);   // Not allowed to see this
+                continue;
             }
         }
+
         // Ensure user is not allowed to configure instantmessage if it is globally disabled.
         if (!$CFG->messaging && $provider->name == 'instantmessage') {
             unset($providers[$providerid]);
+            continue;
+        }
+
+        // If the component is an enrolment plugin, check it is enabled
+        list($type, $name) = normalize_component($provider->component);
+        if ($type == 'enrol') {
+            if (!enrol_is_enabled($name)) {
+                unset($providers[$providerid]);
+                continue;
+            }
         }
     }
 

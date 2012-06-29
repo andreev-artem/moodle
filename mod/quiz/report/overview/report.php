@@ -118,10 +118,12 @@ class quiz_overview_report extends quiz_attempt_report {
         }
 
         $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
-        $courseshortname = format_string($course->shortname, true, array('context' => $coursecontext));
+        $courseshortname = format_string($course->shortname, true,
+                array('context' => $coursecontext));
 
         $displaycoursecontext = get_context_instance(CONTEXT_COURSE, $COURSE->id);
-        $displaycourseshortname = format_string($COURSE->shortname, true, array('context' => $displaycoursecontext));
+        $displaycourseshortname = format_string($COURSE->shortname, true,
+                array('context' => $displaycoursecontext));
 
         // Load the required questions.
         $questions = quiz_report_get_significant_questions($quiz);
@@ -140,14 +142,14 @@ class quiz_overview_report extends quiz_attempt_report {
         // Process actions.
         if (empty($currentgroup) || $groupstudents) {
             if (optional_param('delete', 0, PARAM_BOOL) && confirm_sesskey()) {
-                if ($attemptids = optional_param('attemptid', array(), PARAM_INT)) {
+                if ($attemptids = optional_param_array('attemptid', array(), PARAM_INT)) {
                     require_capability('mod/quiz:deleteattempts', $this->context);
                     $this->delete_selected_attempts($quiz, $cm, $attemptids, $allowed);
                     redirect($reporturl->out(false, $displayoptions));
                 }
 
             } else if (optional_param('regrade', 0, PARAM_BOOL) && confirm_sesskey()) {
-                if ($attemptids = optional_param('attemptid', array(), PARAM_INT)) {
+                if ($attemptids = optional_param_array('attemptid', array(), PARAM_INT)) {
                     require_capability('mod/quiz:regrade', $this->context);
                     $this->regrade_attempts($quiz, false, $groupstudents, $attemptids);
                     redirect($reporturl->out(false, $displayoptions));
@@ -372,6 +374,7 @@ class quiz_overview_report extends quiz_attempt_report {
      */
     protected function regrade_attempt($attempt, $dryrun = false, $slots = null) {
         global $DB;
+        set_time_limit(30);
 
         $transaction = $DB->start_delegated_transaction();
 
@@ -404,6 +407,11 @@ class quiz_overview_report extends quiz_attempt_report {
         }
 
         $transaction->allow_commit();
+
+        // Really, PHP should not need this hint, but without this, we just run out of memory.
+        $quba = null;
+        $transaction = null;
+        gc_collect_cycles();
     }
 
     /**
@@ -443,7 +451,6 @@ class quiz_overview_report extends quiz_attempt_report {
         $this->clear_regrade_table($quiz, $groupstudents);
 
         foreach ($attempts as $attempt) {
-            set_time_limit(30);
             $this->regrade_attempt($attempt, $dryrun);
         }
 
@@ -492,7 +499,6 @@ class quiz_overview_report extends quiz_attempt_report {
         $this->clear_regrade_table($quiz, $groupstudents);
 
         foreach ($attempts as $attempt) {
-            set_time_limit(30);
             $this->regrade_attempt($attempt, false, $attemptquestions[$attempt->uniqueid]);
         }
 

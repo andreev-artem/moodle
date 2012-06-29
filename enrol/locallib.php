@@ -199,7 +199,9 @@ class course_enrolment_manager {
         $key = md5("$sort-$direction-$page-$perpage");
         if (!array_key_exists($key, $this->users)) {
             list($instancessql, $params, $filter) = $this->get_instance_sql();
-            $ufields = user_picture::fields('u', array('lastaccess', 'email'));
+            $extrafields = get_extra_user_fields($this->get_context());
+            $extrafields[] = 'lastaccess';
+            $ufields = user_picture::fields('u', $extrafields);
             $sql = "SELECT DISTINCT $ufields, ul.timeaccess AS lastseen
                       FROM {user} u
                       JOIN {user_enrolments} ue ON (ue.userid = u.id  AND ue.enrolid $instancessql)
@@ -279,10 +281,8 @@ class course_enrolment_manager {
         $tests = array("id <> :guestid", 'u.deleted = 0', 'u.confirmed = 1');
         $params = array('guestid' => $CFG->siteguest);
         if (!empty($search)) {
-            $conditions = array(
-                $DB->sql_concat('u.firstname', "' '", 'u.lastname'),
-                'u.email'
-            );
+            $conditions = get_extra_user_fields($this->get_context());
+            $conditions[] = $DB->sql_concat('u.firstname', "' '", 'u.lastname');
             if ($searchanywhere) {
                 $searchparam = '%' . $search . '%';
             } else {
@@ -298,7 +298,10 @@ class course_enrolment_manager {
         }
         $wherecondition = implode(' AND ', $tests);
 
-        $ufields = user_picture::fields('u', array('username', 'lastaccess'));
+        $extrafields = get_extra_user_fields($this->get_context(), array('username', 'lastaccess'));
+        $extrafields[] = 'username';
+        $extrafields[] = 'lastaccess';
+        $ufields = user_picture::fields('u', $extrafields);
 
         $fields      = 'SELECT '.$ufields;
         $countfields = 'SELECT COUNT(1)';
@@ -503,7 +506,7 @@ class course_enrolment_manager {
     public function unenrol_user($ue) {
         global $DB;
         list ($instance, $plugin) = $this->get_user_enrolment_components($ue);
-        if ($instance && $plugin && $plugin->allow_unenrol($instance) && has_capability("enrol/$instance->enrol:unenrol", $this->context)) {
+        if ($instance && $plugin && $plugin->allow_unenrol_user($instance, $ue) && has_capability("enrol/$instance->enrol:unenrol", $this->context)) {
             $plugin->unenrol_user($instance, $ue->userid);
             return true;
         }
@@ -757,16 +760,13 @@ class course_enrolment_manager {
      * @return array
      */
     public function get_other_users_for_display(core_enrol_renderer $renderer, moodle_url $pageurl, $sort, $direction, $page, $perpage) {
-        global $CFG;
+
         $userroles = $this->get_other_users($sort, $direction, $page, $perpage);
         $roles = $this->get_all_roles();
 
         $context    = $this->get_context();
         $now = time();
-        $extrafields = array();
-        if (!empty($CFG->extrauserselectorfields)) {
-            $extrafields = explode(',', $CFG->extrauserselectorfields);
-        }
+        $extrafields = get_extra_user_fields($context);
 
         $users = array();
         foreach ($userroles as $userrole) {
@@ -816,7 +816,6 @@ class course_enrolment_manager {
      * @return array
      */
     public function get_users_for_display(course_enrolment_manager $manager, $sort, $direction, $page, $perpage) {
-        global $CFG;
         $pageurl = $manager->get_moodlepage()->url;
         $users = $this->get_users($sort, $direction, $page, $perpage);
 
@@ -832,10 +831,7 @@ class course_enrolment_manager {
         $canmanagegroups = has_capability('moodle/course:managegroups', $context);
 
         $url = new moodle_url($pageurl, $this->get_url_params());
-        $extrafields = array();
-        if (!empty($CFG->extrauserselectorfields)) {
-            $extrafields = explode(',', $CFG->extrauserselectorfields);
-        }
+        $extrafields = get_extra_user_fields($context);
 
         $userdetails = array();
         foreach ($users as $user) {

@@ -166,11 +166,11 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
          * @return void
          */
         var scorm_fixnav = function() {
-            scorm_buttons[0].set('disabled', (scorm_skipprev(scorm_current_node) == null));
-            scorm_buttons[1].set('disabled', (scorm_prev(scorm_current_node) == null));
-            scorm_buttons[2].set('disabled', (scorm_up(scorm_current_node) == null));
-            scorm_buttons[3].set('disabled', (scorm_next(scorm_current_node) == null));
-            scorm_buttons[4].set('disabled', (scorm_skipnext(scorm_current_node) == null));
+            scorm_buttons[0].set('disabled', (scorm_skipprev(scorm_current_node) == null || scorm_skipprev(scorm_current_node).title == null));
+            scorm_buttons[1].set('disabled', (scorm_prev(scorm_current_node) == null || scorm_prev(scorm_current_node).title == null));
+            scorm_buttons[2].set('disabled', (scorm_up(scorm_current_node) == null) || scorm_up(scorm_current_node).title == null);
+            scorm_buttons[3].set('disabled', (scorm_next(scorm_current_node) == null) || scorm_next(scorm_current_node).title == null);
+            scorm_buttons[4].set('disabled', (scorm_skipnext(scorm_current_node) == null || scorm_skipnext(scorm_current_node).title == null));
         };
 
         var scorm_resize_parent = function() {
@@ -196,10 +196,10 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
 
             var left = scorm_layout_widget.getUnitByPosition('left');
             var maxwidth = parseInt(YAHOO.util.Dom.getStyle('scorm_layout', 'width'));
-            left.set('maxWidth', (maxwidth - 10));
+            left.set('maxWidth', (maxwidth - 50));
             var cwidth = left.get('width');
-            if (cwidth > (maxwidth - 10)) {
-                left.set('width', (maxwidth - 10));
+            if (cwidth > (maxwidth - 1)) {
+                left.set('width', (maxwidth - 50));
             }
 
             scorm_layout_widget.setStyle('height', '100%');
@@ -207,7 +207,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             center.setStyle('height', '100%');
 
             // calculate the rough new height
-            newheight = YAHOO.util.Dom.getViewportHeight() *.82;
+            newheight = YAHOO.util.Dom.getViewportHeight() -5;
             if (newheight < 600) {
                 newheight = 600;
             }
@@ -247,12 +247,11 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
                     }
                 }
                 else {
-                    obj.style.width = (content.offsetWidth - 6)+'px';
+                    obj.style.width = (content.offsetWidth)+'px';
                     obj.style.height = (content.offsetHeight - 10)+'px';
                 }
             }
         };
-
 
         var scorm_up = function(node) {
             var node = scorm_tree_node.getHighlightedNode();
@@ -307,7 +306,6 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
 
         mod_scorm_next = scorm_next;
         mod_scorm_prev = scorm_prev;
-
 
         // layout
         YAHOO.widget.LayoutUnit.prototype.STR_COLLAPSE = M.str.moodle.hide;
@@ -365,6 +363,9 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
         scorm_tree_node = tree;
         tree.singleNodeHighlight = true;
         tree.subscribe('labelClick', function(node) {
+            if (node.title == '' || node.title == null) {
+                return; //this item has no navigation
+            }
             scorm_activate_item(node);
             if (node.children.length) {
                 scorm_bloody_labelclick = true;

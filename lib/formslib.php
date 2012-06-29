@@ -714,7 +714,7 @@ abstract class moodleform {
         if (!$this->get_new_filename($elname)) {
             return false;
         }
-        if (!$dir = make_upload_directory('temp/forms')) {
+        if (!$dir = make_temp_directory('forms')) {
             return false;
         }
         if (!$tempfile = tempnam($dir, 'tempup_')) {
@@ -916,6 +916,30 @@ abstract class moodleform {
     }
 
     /**
+     * Helper used by {@link repeat_elements()}.
+     * @param int $i the index of this element.
+     * @param HTML_QuickForm_element $elementclone
+     * @param array $namecloned array of names
+     */
+    function repeat_elements_fix_clone($i, $elementclone, &$namecloned) {
+        $name = $elementclone->getName();
+        $namecloned[] = $name;
+
+        if (!empty($name)) {
+            $elementclone->setName($name."[$i]");
+        }
+
+        if (is_a($elementclone, 'HTML_QuickForm_header')) {
+            $value = $elementclone->_text;
+            $elementclone->setValue(str_replace('{no}', ($i+1), $value));
+
+        } else {
+            $value=$elementclone->getLabel();
+            $elementclone->setLabel(str_replace('{no}', ($i+1), $value));
+        }
+    }
+
+    /**
      * Method to add a repeating group of elements to a form.
      *
      * @param array $elementobjs Array of elements or groups of elements that are to be repeated
@@ -957,19 +981,13 @@ abstract class moodleform {
         for ($i = 0; $i < $repeats; $i++) {
             foreach ($elementobjs as $elementobj){
                 $elementclone = fullclone($elementobj);
-                $name = $elementclone->getName();
-                $namecloned[] = $name;
-                if (!empty($name)) {
-                    $elementclone->setName($name."[$i]");
-                }
-                if (is_a($elementclone, 'HTML_QuickForm_header')) {
-                    $value = $elementclone->_text;
-                    $elementclone->setValue(str_replace('{no}', ($i+1), $value));
+                $this->repeat_elements_fix_clone($i, $elementclone, $namecloned);
 
-                } else {
-                    $value=$elementclone->getLabel();
-                    $elementclone->setLabel(str_replace('{no}', ($i+1), $value));
-
+                if ($elementclone instanceof HTML_QuickForm_group && !$elementclone->_appendName) {
+                    foreach ($elementclone->getElements() as $el) {
+                        $this->repeat_elements_fix_clone($i, $el, $namecloned);
+                    }
+                    $elementclone->setLabel(str_replace('{no}', $i + 1, $elementclone->getLabel()));
                 }
 
                 $mform->addElement($elementclone);
@@ -979,8 +997,8 @@ abstract class moodleform {
             foreach ($options as $elementname => $elementoptions){
                 $pos=strpos($elementname, '[');
                 if ($pos!==FALSE){
-                    $realelementname = substr($elementname, 0, $pos+1)."[$i]";
-                    $realelementname .= substr($elementname, $pos+1);
+                    $realelementname = substr($elementname, 0, $pos)."[$i]";
+                    $realelementname .= substr($elementname, $pos);
                 }else {
                     $realelementname = $elementname."[$i]";
                 }
@@ -1066,7 +1084,8 @@ abstract class moodleform {
         if (!is_null($contollerbutton) || is_null($select_value)) {
             foreach ($mform->_elements as $element) {
                 if (($element instanceof MoodleQuickForm_advcheckbox) &&
-                    $element->getAttribute('class') == $checkboxgroupclass) {
+                        $element->getAttribute('class') == $checkboxgroupclass &&
+                        !$element->isFrozen()) {
                     $mform->setConstants(array($element->getName() => $new_select_value));
                 }
             }
@@ -1445,7 +1464,14 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
         } else {
             foreach ($submission as $key=>$s) {
                 if (array_key_exists($key, $this->_types)) {
-                    $submission[$key] = clean_param($s, $this->_types[$key]);
+                    $type = $this->_types[$key];
+                } else {
+                    $type = PARAM_RAW;
+                }
+                if (is_array($s)) {
+                    $submission[$key] = clean_param_array($s, $type, true);
+                } else {
+                    $submission[$key] = clean_param($s, $type);
                 }
             }
             $this->_submitValues = $submission;
@@ -2498,6 +2524,7 @@ MoodleQuickForm::registerElementType('file', "$CFG->libdir/form/file.php", 'Mood
 MoodleQuickForm::registerElementType('filemanager', "$CFG->libdir/form/filemanager.php", 'MoodleQuickForm_filemanager');
 MoodleQuickForm::registerElementType('filepicker', "$CFG->libdir/form/filepicker.php", 'MoodleQuickForm_filepicker');
 MoodleQuickForm::registerElementType('format', "$CFG->libdir/form/format.php", 'MoodleQuickForm_format');
+MoodleQuickForm::registerElementType('grading', "$CFG->libdir/form/grading.php", 'MoodleQuickForm_grading');
 MoodleQuickForm::registerElementType('group', "$CFG->libdir/form/group.php", 'MoodleQuickForm_group');
 MoodleQuickForm::registerElementType('header', "$CFG->libdir/form/header.php", 'MoodleQuickForm_header');
 MoodleQuickForm::registerElementType('hidden', "$CFG->libdir/form/hidden.php", 'MoodleQuickForm_hidden');

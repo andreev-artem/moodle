@@ -65,8 +65,11 @@ class webservice {
             throw new webservice_access_exception(get_string('invalidiptoken', 'webservice'));
         }
 
-        //retrieve the user info from the token
+        //retrieve user link to the token
         $user = $DB->get_record('user', array('id' => $token->userid, 'deleted' => 0), '*', MUST_EXIST);
+
+        // let enrol plugins deal with new enrolments if necessary
+        enrol_check_plugins($user);
 
         // setup user session to check capability
         session_set_user($user);
@@ -80,7 +83,7 @@ class webservice {
             }
         }
 
-        //Refuse non-admin authentication in maintenance mode
+        //Non admin can not authenticate if maintenance mode
         $hassiteconfig = has_capability('moodle/site:config', get_context_instance(CONTEXT_SYSTEM), $user);
         if (!empty($CFG->maintenance_enabled) and !$hassiteconfig) {
             throw new webservice_access_exception(get_string('sitemaintenance', 'admin'));
@@ -148,7 +151,6 @@ class webservice {
 
         return array('user' => $user, 'token' => $token, 'service' => $service);
     }
-
 
     /**
      * Add a user to the list of authorised user of a given service
@@ -475,9 +477,9 @@ class webservice {
     public function get_user_capabilities($userid) {
         global $DB;
         //retrieve the user capabilities
-        $sql = "SELECT rc.id, rc.capability FROM {role_capabilities} rc, {role_assignments} ra
-            WHERE rc.roleid=ra.roleid AND ra.userid= ?";
-        $dbusercaps = $DB->get_records_sql($sql, array($userid));
+        $sql = "SELECT DISTINCT rc.id, rc.capability FROM {role_capabilities} rc, {role_assignments} ra
+            WHERE rc.roleid=ra.roleid AND ra.userid= ? AND rc.permission = ?";
+        $dbusercaps = $DB->get_records_sql($sql, array($userid, CAP_ALLOW));
         $usercaps = array();
         foreach ($dbusercaps as $usercap) {
             $usercaps[$usercap->capability] = true;
@@ -814,11 +816,12 @@ abstract class webservice_server implements webservice_server_interface {
         }
 
         // now fake user login, the session is completely empty too
+        enrol_check_plugins($user);
         session_set_user($user);
         $this->userid = $user->id;
 
         if ($this->authmethod != WEBSERVICE_AUTHMETHOD_SESSION_TOKEN && !has_capability("webservice/$this->wsname:use", $this->restricted_context)) {
-            throw new webservice_access_exception(get_string('accessnotallowed', 'webservice'));
+            throw new webservice_access_exception(get_string('protocolnotallowed', 'webservice', $this->wsname));
         }
 
         external_api::set_context_restriction($this->restricted_context);
@@ -1086,22 +1089,7 @@ class '.$classname.' {
             }
             $params[] = $param;
             $paramanddefaults[] = $paramanddefault;
-            $type = 'string';
-            if ($keydesc instanceof external_value) {
-                switch($keydesc->type) {
-                    case PARAM_BOOL: // 0 or 1 only for now
-                    case PARAM_INT:
-                        $type = 'int'; break;
-                    case PARAM_FLOAT;
-                        $type = 'double'; break;
-                    default:
-                        $type = 'string';
-                }
-            } else if ($keydesc instanceof external_single_structure) {
-                $type = 'object|struct';
-            } else if ($keydesc instanceof external_multiple_structure) {
-                $type = 'array';
-            }
+            $type = $this->get_phpdoc_type($keydesc);
             $params_desc[] = '     * @param '.$type.' $'.$name.' '.$keydesc->desc;
         }
         $params                = implode(', ', $params);
@@ -1113,22 +1101,7 @@ class '.$classname.' {
         if (is_null($function->returns_desc)) {
             $return = '     * @return void';
         } else {
-            $type = 'string';
-            if ($function->returns_desc instanceof external_value) {
-                switch($function->returns_desc->type) {
-                    case PARAM_BOOL: // 0 or 1 only for now
-                    case PARAM_INT:
-                        $type = 'int'; break;
-                    case PARAM_FLOAT;
-                        $type = 'double'; break;
-                    default:
-                        $type = 'string';
-                }
-            } else if ($function->returns_desc instanceof external_single_structure) {
-                $type = 'object|struct'; //only 'object' is supported by SOAP, 'struct' by XML-RPC MDL-23083
-            } else if ($function->returns_desc instanceof external_multiple_structure) {
-                $type = 'array';
-            }
+            $type = $this->get_phpdoc_type($function->returns_desc);
             $return = '     * @return '.$type.' '.$function->returns_desc->desc;
         }
 
@@ -1146,6 +1119,33 @@ class '.$classname.' {
     }
 ';
         return $code;
+    }
+
+    protected function get_phpdoc_type($keydesc) {
+        if ($keydesc instanceof external_value) {
+            switch($keydesc->type) {
+                case PARAM_BOOL: // 0 or 1 only for now
+                case PARAM_INT:
+                    $type = 'int'; break;
+                case PARAM_FLOAT;
+                    $type = 'double'; break;
+                default:
+                    $type = 'string';
+            }
+
+        } else if ($keydesc instanceof external_single_structure) {
+            $classname = $this->generate_simple_struct_class($keydesc);
+            $type = $classname;
+
+        } else if ($keydesc instanceof external_multiple_structure) {
+            $type = 'array';
+        }
+
+        return $type;
+    }
+
+    protected function generate_simple_struct_class(external_single_structure $structdesc) {
+        return 'object|struct'; //only 'object' is supported by SOAP, 'struct' by XML-RPC MDL-23083
     }
 
     /**
@@ -1477,7 +1477,7 @@ abstract class webservice_base_server extends webservice_server {
         }
         $rs->close();
         if (!$allowed) {
-            throw new webservice_access_exception('Access to external function not allowed');
+            throw new webservice_access_exception(get_string('accesstofunctionnotallowed', 'webservice', $this->functionname));
         }
 
         // we have all we need now

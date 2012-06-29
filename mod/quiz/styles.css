@@ -389,6 +389,7 @@ bank window's title is prominent enough*/
 #adminquizreviewoptions {margin-bottom: 0.5em;}
 
 /* RTL Mode */
+
 #page-mod-quiz-mod.dir-rtl #reviewoptionshdr .fitem, .dir-rtl  #adminquizreviewoptions .group { width: 23%;float: right;}
 #page-mod-quiz-mod.dir-rtl #reviewoptionshdr .fitemtitle, .dir-rtl  #adminquizreviewoptions .fitemtitle {text-align: right;}
 #page-mod-quiz-mod.dir-rtl #reviewoptionshdr fieldset.fgroup span, .dir-rtl  #adminquizreviewoptions span {clear: right;float: right;}

@@ -37,6 +37,10 @@ class restore_root_task extends restore_task {
         // Conditionally create the temp table (can exist from prechecks) and delete old stuff
         $this->add_step(new restore_create_and_clean_temp_stuff('create_and_clean_temp_stuff'));
 
+        // Now make sure the user that is running the restore can actually access the course
+        // before executing any other step (potentially performing permission checks)
+        $this->add_step(new restore_fix_restorer_access_step('fix_restorer_access'));
+
         // If we haven't preloaded information, load all the included inforef records to temp_ids table
         $this->add_step(new restore_load_included_inforef_records('load_inforef_records'));
 
@@ -165,6 +169,19 @@ class restore_root_task extends restore_task {
         $comments->get_ui()->set_changeable($changeable);
         $this->add_setting($comments);
         $users->add_dependency($comments);
+
+        // Define Calendar events (dependent of users)
+        $defaultvalue = false;                      // Safer default
+        $changeable = false;
+        if (isset($rootsettings['calendarevents']) && $rootsettings['calendarevents']) { // Only enabled when available
+            $defaultvalue = true;
+            $changeable = true;
+        }
+        $events = new restore_calendarevents_setting('calendarevents', base_setting::IS_BOOLEAN, $defaultvalue);
+        $events->set_ui(new backup_setting_ui_checkbox($events, get_string('rootsettingcalendarevents', 'backup')));
+        $events->get_ui()->set_changeable($changeable);
+        $this->add_setting($events);
+        $users->add_dependency($events);
 
         // Define completion (dependent of users)
         $defaultvalue = false;                      // Safer default

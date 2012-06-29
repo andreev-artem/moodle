@@ -164,7 +164,9 @@ function blog_rss_get_feed($context, $args) {
             $item->title = $blog_entry->subject;
             $item->pubdate = $blog_entry->lastmodified;
             $item->link = $CFG->wwwroot.'/blog/index.php?entryid='.$blog_entry->id;
-            $item->description = format_text($blog_entry->summary, $blog_entry->format);
+            $summary = file_rewrite_pluginfile_urls($blog_entry->summary, 'pluginfile.php',
+                $sitecontext->id, 'blog', 'post', $blog_entry->id);
+            $item->description = format_text($summary, $blog_entry->format);
             if ( !empty($CFG->usetags) && ($blogtags = tag_get_tags_array('post', $blog_entry->id)) ) {
                 if ($blogtags) {
                     $item->tags = $blogtags;
@@ -224,9 +226,9 @@ function blog_rss_file_name($type, $id, $tagid=0) {
     global $CFG;
 
     if ($tagid) {
-        return "$CFG->dataroot/cache/rss/blog/$type/$id/$tagid.xml";
+        return "$CFG->cachedir/rss/blog/$type/$id/$tagid.xml";
     } else {
-        return "$CFG->dataroot/cache/rss/blog/$type/$id.xml";
+        return "$CFG->cachedir/rss/blog/$type/$id.xml";
     }
 }
 
@@ -237,8 +239,8 @@ function blog_rss_save_file($type, $id, $tagid=0, $contents='') {
     $status = true;
 
     //blog creates some additional dirs within the rss cache so make sure they all exist
-    make_upload_directory('cache/rss/blog');
-    make_upload_directory('cache/rss/blog/'.$type);
+    make_cache_directory('rss/blog');
+    make_cache_directory('rss/blog/'.$type);
 
     $filename = blog_rss_file_name($type, $id, $tagid);
     $expandfilename = false; //we're supplying a full file path
