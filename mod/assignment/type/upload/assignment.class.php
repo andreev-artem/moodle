@@ -122,6 +122,8 @@ class assignment_upload extends assignment_base {
 
         if (!$canviewfeedback) {
             // can not view or submit assignments -> no feedback
+            return;
+        }
 
         $grading_info = grade_get_grades($this->course->id, 'mod', 'assignment', $this->assignment->id, $userid);
         $item = $grading_info->items[0];
@@ -1134,7 +1136,7 @@ class assignment_upload extends assignment_base {
     /**
      * creates a zip of all assignment submissions and sends a zip to the browser
      */
-    public function download_submissions() {
+    function download_submissions() {
         global $CFG,$DB;
         require_once($CFG->libdir.'/filelib.php');
         $submissions = $this->get_submissions('','');
@@ -1182,7 +1184,7 @@ class assignment_upload extends assignment_base {
      * @param  stdClass $submission The submission we want to check for completion
      * @return bool                 Indicates if the submission was found to be complete
      */
-    public function is_submitted_with_required_data($submission) {
+    function is_submitted_with_required_data($submission) {
         return ($submission->timemodified AND $submission->data2);
     }
 }

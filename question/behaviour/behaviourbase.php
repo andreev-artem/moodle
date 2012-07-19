@@ -91,16 +91,6 @@ abstract class question_behaviour {
     }
 
     /**
-     * Some behaviours can only work with certing types of question. This method
-     * allows the behaviour to verify that a question is compatible.
-     * @param question_definition $question the question.
-     */
-    public function is_compatible_question(question_definition $question) {
-        $requiredclass = $this->required_question_definition_type();
-        return $this->question instanceof $requiredclass;
-    }
-
-    /**
      * Most behaviours can only work with {@link question_definition}s
      * of a particular subtype, or that implement a particular interface.
      * This method lets the behaviour document that. The type of
