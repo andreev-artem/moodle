@@ -208,11 +208,11 @@ function cron_run() {
     if ($DB->count_records('user_preferences', array('name'=>'create_password', 'value'=>'1'))) {
         mtrace('Creating passwords for new users...');
         $newusers = $DB->get_recordset_sql("SELECT u.id as id, u.email, u.firstname,
-                                                 u.lastname, u.username,
+                                                 u.lastname, u.username, u.lang,
                                                  p.id as prefid
                                             FROM {user} u
                                             JOIN {user_preferences} p ON u.id=p.userid
-                                           WHERE p.name='create_password' AND p.value='1' AND u.email !='' AND u.suspended = 0 AND u.auth != 'nologin'");
+                                           WHERE p.name='create_password' AND p.value='1' AND u.email !='' AND u.suspended = 0 AND u.auth != 'nologin' AND u.deleted = 0");
 
         // note: we can not send emails to suspended accounts
         foreach ($newusers as $newuser) {
@@ -356,7 +356,7 @@ function cron_run() {
         require_once($CFG->dirroot . '/blog/lib.php');
         mtrace("Fetching external blog entries...", '');
         $sql = "timefetched < ? OR timefetched = 0";
-        $externalblogs = $DB->get_records_select('blog_external', $sql, array(mktime() - $CFG->externalblogcrontime));
+        $externalblogs = $DB->get_records_select('blog_external', $sql, array(time() - $CFG->externalblogcrontime));
 
         foreach ($externalblogs as $eb) {
             blog_sync_external_entries($eb);
@@ -380,6 +380,12 @@ function cron_run() {
     $registrationmanager->cron();
     mtrace(get_string('siteupdatesend', 'hub'));
 
+    // If enabled, fetch information about available updates and eventually notify site admins
+    if (empty($CFG->disableupdatenotifications)) {
+        require_once($CFG->libdir.'/pluginlib.php');
+        $updateschecker = available_update_checker::instance();
+        $updateschecker->cron();
+    }
 
     //cleanup old session linked tokens
     //deletes the session linked tokens that are over a day old.
@@ -396,9 +402,9 @@ function cron_run() {
     cron_execute_plugin_type('format', 'course formats');
     cron_execute_plugin_type('profilefield', 'profile fields');
     cron_execute_plugin_type('webservice', 'webservices');
-    // TODO: Repository lib.php files are messed up (include many other files, etc), so it is
-    // currently not possible to implement repository plugin cron using this infrastructure
-    // cron_execute_plugin_type('repository', 'repository plugins');
+    cron_execute_plugin_type('repository', 'repository plugins');
+    cron_execute_plugin_type('qbehaviour', 'question behaviours');
+    cron_execute_plugin_type('qformat', 'question import/export formats');
     cron_execute_plugin_type('qtype', 'question types');
     cron_execute_plugin_type('plagiarism', 'plagiarism plugins');
     cron_execute_plugin_type('theme', 'themes');
@@ -453,6 +459,9 @@ function cron_run() {
     $fs = get_file_storage();
     $fs->cron();
 
+    mtrace("Clean up cached external files");
+    // 1 week
+    cache_file::cleanup(array(), 60 * 60 * 24 * 7);
 
     mtrace("Cron script completed correctly");
 
@@ -700,7 +709,7 @@ function notify_login_failures() {
         mtrace('Emailing admins about '. $count .' failed login attempts');
         foreach ($recip as $admin) {
             //emailing the admins directly rather than putting these through the messaging system
-            email_to_user($admin,get_admin(), $subject, $body);
+            email_to_user($admin, generate_email_supportuser(), $subject, $body);
         }
     }
 
