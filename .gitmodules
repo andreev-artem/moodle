@@ -16,3 +16,9 @@
 [submodule "blocks/course_results"]
 	path = blocks/course_results
 	url = git@github.com:andreev-artem/moodle_blocks_course_results.git
+[submodule "admin/tool/advuserbulk"]
+	path = admin/tool/advuserbulk
+	url = git@github.com:andreev-artem/moodle_admin_tool_advuserbulk.git
+[submodule "admin/tool/addenrol"]
+	path = admin/tool/addenrol
+	url = git@github.com:andreev-artem/moodle_admin_tool_addenrol.git
