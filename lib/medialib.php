@@ -957,6 +957,7 @@ class core_media_player_swf extends core_media_player {
     <param name="scale" value="aspect" />
     <param name="base" value="." />
     <param name="allowscriptaccess" value="never" />
+    <param name="wmode" value="transparent">
 <!--[if !IE]>-->
     <object type="application/x-shockwave-flash" data="$url" width="$width" height="$height">
       <param name="controller" value="true" />
@@ -965,6 +966,7 @@ class core_media_player_swf extends core_media_player {
       <param name="scale" value="aspect" />
       <param name="base" value="." />
       <param name="allowscriptaccess" value="never" />
+      <param name="wmode" value="transparent">
 <!--<![endif]-->
 $fallback
 <!--[if !IE]>-->
