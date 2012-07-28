@@ -84,12 +84,10 @@ $PAGE->navbar->add(get_string('enrolmentoptions','enrol'));
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('enrolmentoptions','enrol'));
 
-// print course info
 echo $OUTPUT->box_start('generalbox info');
 
-$course->summary = file_rewrite_pluginfile_urls($course->summary, 'pluginfile.php', $context->id, 'course', 'summary', NULL);
-echo format_text($course->summary, $course->summaryformat, array('overflowdiv'=>true), $course->id);
-
+$summary = file_rewrite_pluginfile_urls($course->summary, 'pluginfile.php', $context->id, 'course', 'summary', null);
+echo format_text($summary, $course->summaryformat, array('overflowdiv'=>true), $course->id);
 if (!empty($CFG->coursecontact)) {
     $coursecontactroles = explode(',', $CFG->coursecontact);
     foreach ($coursecontactroles as $roleid) {
@@ -99,7 +97,7 @@ if (!empty($CFG->coursecontact)) {
             foreach ($users as $teacher) {
                 $fullname = fullname($teacher, has_capability('moodle/site:viewfullnames', $context));
                 $namesarray[] = format_string(role_get_name($role, $context)).': <a href="'.$CFG->wwwroot.'/user/view.php?id='.
-                                $teacher->id.'&amp;course='.SITEID.'">'.$fullname.'</a>';
+                    $teacher->id.'&amp;course='.SITEID.'">'.$fullname.'</a>';
             }
         }
     }
@@ -112,6 +110,7 @@ if (!empty($CFG->coursecontact)) {
 }
 
 echo $OUTPUT->box_end();
+
 
 //TODO: find if future enrolments present and display some info
 
