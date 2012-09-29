@@ -152,7 +152,11 @@ abstract class quiz_attempts_report_table extends table_sql {
      * @return string HTML content to go inside the td.
      */
     public function col_state($attempt) {
-        return quiz_attempt::state_name($attempt->state);
+        if (!is_null($attempt->attempt)) {
+            return quiz_attempt::state_name($attempt->state);
+        } else {
+            return  '-';
+        }
     }
 
     /**
@@ -514,7 +518,7 @@ abstract class quiz_attempts_report_table extends table_sql {
             return;
         }
 
-        $url = new moodle_url($this->reporturl, $this->displayoptions);
+        $url = $this->options->get_url();
         $url->param('sesskey', sesskey());
 
         echo '<div id="tablecontainer">';

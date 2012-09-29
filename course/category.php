@@ -27,6 +27,7 @@
 
 require_once("../config.php");
 require_once($CFG->dirroot.'/course/lib.php');
+require_once($CFG->libdir.'/textlib.class.php');
 
 $id = required_param('id', PARAM_INT); // Category id
 $page = optional_param('page', 0, PARAM_INT); // which page to show
@@ -75,7 +76,8 @@ $sesskeyprovided = !empty($sesskey) && confirm_sesskey($sesskey);
 // Process any category actions.
 if ($canmanage && $resort && $sesskeyprovided) {
     // Resort the category if requested
-    if ($courses = get_courses($category->id, "fullname ASC", 'c.id,c.fullname,c.sortorder')) {
+    if ($courses = get_courses($category->id, '', 'c.id,c.fullname,c.sortorder')) {
+        collatorlib::asort_objects_by_property($courses, 'fullname', collatorlib::SORT_NATURAL);
         $i = 1;
         foreach ($courses as $course) {
             $DB->set_field('course', 'sortorder', $category->sortorder+$i, array('id'=>$course->id));
@@ -422,6 +424,7 @@ if (!$courses) {
         make_categories_list($movetocategories, $notused, 'moodle/category:manage');
         $movetocategories[$category->id] = get_string('moveselectedcoursesto');
         echo '<tr><td colspan="3" align="right">';
+        echo html_writer::label(get_string('moveselectedcoursesto'), 'movetoid', false, array('class' => 'accesshide'));
         echo html_writer::select($movetocategories, 'moveto', $category->id, null, array('id'=>'movetoid'));
         $PAGE->requires->js_init_call('M.util.init_select_autosubmit', array('movecourses', 'movetoid', false));
         echo '<input type="hidden" name="id" value="'.$category->id.'" />';

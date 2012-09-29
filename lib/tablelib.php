@@ -451,9 +451,13 @@ class flexible_table {
             $this->sess->sortby = array_slice($this->sess->sortby, 0, $this->maxsortkeys);
         }
 
-        // If we didn't sort just now, then use the default sort order if one is defined and the column exists
-        if (empty($this->sess->sortby) && !empty($this->sort_default_column))  {
-            $this->sess->sortby = array ($this->sort_default_column => ($this->sort_default_order == SORT_DESC ? SORT_DESC : SORT_ASC));
+        // MDL-35375 - If a default order is defined and it is not in the current list of order by columns, add it at the end.
+        // This prevents results from being returned in a random order if the only order by column contains equal values.
+        if (!empty($this->sort_default_column))  {
+            if (!array_key_exists($this->sort_default_column, $this->sess->sortby)) {
+                $defaultsort = array($this->sort_default_column => $this->sort_default_order);
+                $this->sess->sortby = array_merge($this->sess->sortby, $defaultsort);
+            }
         }
 
         $ilast = optional_param($this->request[TABLE_VAR_ILAST], null, PARAM_RAW);
@@ -918,6 +922,7 @@ class flexible_table {
             $html = '<form action="'. $this->baseurl .'" method="post">';
             $html .= '<div class="mdl-align">';
             $html .= '<input type="submit" value="'.get_string('downloadas', 'table').'"/>';
+            $html .= html_writer::label(get_string('downloadoptions', 'table'), 'menudownload', false, array('class' => 'accesshide'));
             $html .= html_writer::select($downloadoptions, 'download', $this->defaultdownloadformat, false);
             $html .= '</div></form>';
 

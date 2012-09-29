@@ -550,6 +550,10 @@ class pix_icon implements renderable {
         }
         if (!isset($this->attributes['title'])) {
             $this->attributes['title'] = $this->attributes['alt'];
+        } else if (empty($this->attributes['title'])) {
+            // Remove the title attribute if empty, we probably want to use the parent node's title
+            // and some browsers might overwrite it with an empty title.
+            unset($this->attributes['title']);
         }
     }
 }
@@ -715,6 +719,11 @@ class single_select implements renderable {
     var $label = '';
 
     /**
+     * @var array Button label's attributes
+     */
+    var $labelattributes = array();
+
+    /**
      * @var string Form submit method post or get
      */
     var $method = 'get';
@@ -806,9 +815,12 @@ class single_select implements renderable {
      * Sets select's label
      *
      * @param string $label
+     * @param array $attributes (optional)
      */
-    public function set_label($label) {
+    public function set_label($label, $attributes = array()) {
         $this->label = $label;
+        $this->labelattributes = $attributes;
+
     }
 }
 
@@ -849,6 +861,11 @@ class url_select implements renderable {
      * @var string Button label
      */
     var $label = '';
+
+    /**
+     * @var array Button label's attributes
+     */
+    var $labelattributes = array();
 
     /**
      * @var string Wrapping div class
@@ -922,9 +939,11 @@ class url_select implements renderable {
      * Sets select's label
      *
      * @param string $label
+     * @param array $attributes (optional)
      */
-    public function set_label($label) {
+    public function set_label($label, $attributes = array()) {
         $this->label = $label;
+        $this->labelattributes = $attributes;
     }
 }
 
