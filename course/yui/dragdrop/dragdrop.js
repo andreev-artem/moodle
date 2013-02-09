@@ -294,13 +294,13 @@ YUI.add('moodle-course-dragdrop', function(Y) {
                     var resources = Y.Node.create('<ul></ul>');
                     resources.addClass(CSS.SECTION);
                     sectionnode.one('.'+CSS.CONTENT+' div.'+CSS.SUMMARY).insert(resources, 'after');
-                    // Define empty ul as droptarget, so that item could be moved to empty list
-                    var tar = new Y.DD.Drop({
-                        node: resources,
-                        groups: this.groups,
-                        padding: '20 0 20 0'
-                    });
                 }
+                // Define empty ul as droptarget, so that item could be moved to empty list
+                var tar = new Y.DD.Drop({
+                    node: resources,
+                    groups: this.groups,
+                    padding: '20 0 20 0'
+                });
 
                 // Initialise each resource/activity in this section
                 this.setup_for_resource('#'+sectionnode.get('id')+' li.'+CSS.ACTIVITY);
@@ -385,6 +385,9 @@ YUI.add('moodle-course-dragdrop', function(Y) {
                         spinner.show();
                     },
                     success: function(tid, response) {
+                        var responsetext = Y.JSON.parse(response.responseText);
+                        var params = {element: dragnode, visible: responsetext.visible};
+                        M.course.coursebase.invoke_function('set_visibility_resource_ui', params);
                         this.unlock_drag_handle(drag, CSS.EDITINGMOVE);
                         window.setTimeout(function(e) {
                             spinner.hide();

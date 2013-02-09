@@ -81,25 +81,25 @@ function form_init_date_js() {
         $function = 'M.form.dateselector.init_date_selectors';
         $config = array(array(
             'firstdayofweek'    => get_string('firstdayofweek', 'langconfig'),
-            'mon'               => strftime('%a', strtotime("Monday")),
-            'tue'               => strftime('%a', strtotime("Tuesday")),
-            'wed'               => strftime('%a', strtotime("Wednesday")),
-            'thu'               => strftime('%a', strtotime("Thursday")),
-            'fri'               => strftime('%a', strtotime("Friday")),
-            'sat'               => strftime('%a', strtotime("Saturday")),
-            'sun'               => strftime('%a', strtotime("Sunday")),
-            'january'           => strftime('%B', strtotime("January 1")),
-            'february'          => strftime('%B', strtotime("February 1")),
-            'march'             => strftime('%B', strtotime("March 1")),
-            'april'             => strftime('%B', strtotime("April 1")),
-            'may'               => strftime('%B', strtotime("May 1")),
-            'june'              => strftime('%B', strtotime("June 1")),
-            'july'              => strftime('%B', strtotime("July 1")),
-            'august'            => strftime('%B', strtotime("August 1")),
-            'september'         => strftime('%B', strtotime("September 1")),
-            'october'           => strftime('%B', strtotime("October 1")),
-            'november'          => strftime('%B', strtotime("November 1")),
-            'december'          => strftime('%B', strtotime("December 1"))
+            'mon'               => date_format_string(strtotime("Monday"), '%a', 99),
+            'tue'               => date_format_string(strtotime("Tuesday"), '%a', 99),
+            'wed'               => date_format_string(strtotime("Wednesday"), '%a', 99),
+            'thu'               => date_format_string(strtotime("Thursday"), '%a', 99),
+            'fri'               => date_format_string(strtotime("Friday"), '%a', 99),
+            'sat'               => date_format_string(strtotime("Saturday"), '%a', 99),
+            'sun'               => date_format_string(strtotime("Sunday"), '%a', 99),
+            'january'           => date_format_string(strtotime("January 1"), '%B', 99),
+            'february'          => date_format_string(strtotime("February 1"), '%B', 99),
+            'march'             => date_format_string(strtotime("March 1"), '%B', 99),
+            'april'             => date_format_string(strtotime("April 1"), '%B', 99),
+            'may'               => date_format_string(strtotime("May 1"), '%B', 99),
+            'june'              => date_format_string(strtotime("June 1"), '%B', 99),
+            'july'              => date_format_string(strtotime("July 1"), '%B', 99),
+            'august'            => date_format_string(strtotime("August 1"), '%B', 99),
+            'september'         => date_format_string(strtotime("September 1"), '%B', 99),
+            'october'           => date_format_string(strtotime("October 1"), '%B', 99),
+            'november'          => date_format_string(strtotime("November 1"), '%B', 99),
+            'december'          => date_format_string(strtotime("December 1"), '%B', 99)
         ));
         $PAGE->requires->yui_module($module, $function, $config);
         $done = true;
@@ -1279,6 +1279,9 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
     /** @var bool Whether to display advanced elements (on page load) */
     var $_showAdvanced = null;
 
+    /** @var bool whether to automatically initialise M.formchangechecker for this form. */
+    protected $_use_form_change_checker = true;
+
     /**
      * The form name is derived from the class name of the wrapper minus the trailing form
      * It is a name with words joined by underscores whereas the id attribute is words joined by underscores.
@@ -1406,8 +1409,32 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
         return $this->_showAdvanced;
     }
 
+    /**
+     * Call this method if you don't want the formchangechecker JavaScript to be
+     * automatically initialised for this form.
+     */
+    public function disable_form_change_checker() {
+        $this->_use_form_change_checker = false;
+    }
 
-   /**
+    /**
+     * If you have called {@link disable_form_change_checker()} then you can use
+     * this method to re-enable it. It is enabled by default, so normally you don't
+     * need to call this.
+     */
+    public function enable_form_change_checker() {
+        $this->_use_form_change_checker = true;
+    }
+
+    /**
+     * @return bool whether this form should automatically initialise
+     *      formchangechecker for itself.
+     */
+    public function is_form_change_checker_enabled() {
+        return $this->_use_form_change_checker;
+    }
+
+    /**
     * Accepts a renderer
     *
     * @param HTML_QuickForm_Renderer $renderer An HTML_QuickForm_Renderer object
@@ -1675,7 +1702,7 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
                     $value = '';
                     // If we have a default value then export it.
                     if (isset($this->_defaultValues[$varname])) {
-                        $value = array($varname => $this->_defaultValues[$varname]);
+                        $value = $this->prepare_fixed_value($varname, $this->_defaultValues[$varname]);
                     }
                 } else {
                     $value = $this->_elements[$key]->exportValue($this->_submitValues, true);
@@ -1704,6 +1731,29 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
             $unfiltered = HTML_QuickForm::arrayMerge($unfiltered, $this->_constantValues);
         }
         return $unfiltered;
+    }
+
+    /**
+     * This is a bit of a hack, and it duplicates the code in
+     * HTML_QuickForm_element::_prepareValue, but I could not think of a way or
+     * reliably calling that code. (Think about date selectors, for example.)
+     * @param string $name the element name.
+     * @param mixed $value the fixed value to set.
+     * @return mixed the appropriate array to add to the $unfiltered array.
+     */
+    protected function prepare_fixed_value($name, $value) {
+        if (null === $value) {
+            return null;
+        } else {
+            if (!strpos($name, '[')) {
+                return array($name => $value);
+            } else {
+                $valueAry = array();
+                $myIndex  = "['" . str_replace(array(']', '['), array('', "']['"), $name) . "']";
+                eval("\$valueAry$myIndex = \$value;");
+                return $valueAry;
+            }
+        }
     }
 
     /**
@@ -1914,7 +1964,7 @@ function qf_errorHandler(element, _qfMsg) {
             list($jsArr,$element)=$jsandelement;
             //end of fix
             $escapedElementName = preg_replace_callback(
-                '/[_\[\]]/',
+                '/[_\[\]-]/',
                 create_function('$matches', 'return sprintf("_%2x",ord($matches[0]));'),
                 $elementName);
             $js .= '
@@ -2312,13 +2362,15 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
             $this->_hiddenHtml .= $form->_pageparams;
         }
 
-        $PAGE->requires->yui_module('moodle-core-formchangechecker',
-                'M.core_formchangechecker.init',
-                array(array(
-                    'formid' => $form->getAttribute('id')
-                ))
-        );
-        $PAGE->requires->string_for_js('changesmadereallygoaway', 'moodle');
+        if ($form->is_form_change_checker_enabled()) {
+            $PAGE->requires->yui_module('moodle-core-formchangechecker',
+                    'M.core_formchangechecker.init',
+                    array(array(
+                        'formid' => $form->getAttribute('id')
+                    ))
+            );
+            $PAGE->requires->string_for_js('changesmadereallygoaway', 'moodle');
+        }
     }
 
     /**

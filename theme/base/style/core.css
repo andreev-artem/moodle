@@ -477,8 +477,11 @@ body.tag .managelink {padding: 5px;}
 #helppopupbox {background-color: #eee; border: 1px solid #848484;z-index: 10000 !important;}
 #helppopupbox .yui3-widget-hd {float:right;margin:3px 3px 0 0;}
 #helppopupbox .yui3-widget-bd {margin:0 1em 1em 1em;border-top:1px solid #eee;}
+#helppopupbox .yui3-widget-ft {text-align: center;}
+#helppopupbox .yui3-widget-ft .closebtn {margin:0 1em 1em 1em;}
 #helppopupbox .helpheading {font-size: 1em;}
 #helppopupbox .spinner {margin:1em;}
+.dir-rtl #helppopupbox .yui3-widget-hd {float:left;margin:3px 0 0 3px;}
 
 /**
  * Custom menu
@@ -664,7 +667,6 @@ body.tag .managelink {padding: 5px;}
 .dir-rtl .mod-indent-15,
 .dir-rtl .mod-indent-huge {margin-right:300px;margin-left:0;}
 
-.dir-rtl .felement.feditor select {margin-right:18.75%;margin-left:auto;}
 .dir-rtl .mform .fitem .felement {margin-right: 16%;margin-left:auto;text-align: right;}
 .dir-rtl .mform .fitem .felement input[name=email],
 .dir-rtl .mform .fitem .felement input[name=email2],
@@ -736,8 +738,6 @@ sup {vertical-align: super;}
 .dir-rtl .ygtvcancel {background-position: 0 -8822px;}
 .dir-rtl .ygtvcancel:hover {background-position: 0 -8866px;}
 
-.dir-rtl .file-picker .yui-layout-unit-left  {left:500px !important;}
-.dir-rtl .file-picker .yui-layout-unit-center {left:0px !important;}
 .dir-rtl.yui-skin-sam .yui-panel .hd {text-align:left;}
 .dir-rtl .yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-bd {text-align:right;}
 
@@ -847,7 +847,7 @@ sup {vertical-align: super;}
     -moz-box-shadow: 5px 5px 20px 0px #666666;
 }
 
-.chooserdialogue .moodle-dialogue-hd {
+.chooserdialogue .moodle-dialogue-wrap .moodle-dialogue-hd {
     font-size:12px!important;
     font-weight: normal!important;
     letter-spacing: 1px;
@@ -868,7 +868,7 @@ sup {vertical-align: super;}
 /* Question Bank - Question Chooser "Close" button */
 #page-question-edit.dir-rtl a.container-close {right:auto;left:6px;}
 
-.chooserdialogue .moodle-dialogue-bd {
+.chooserdialogue .moodle-dialogue-wrap .moodle-dialogue-bd {
     font-size: 12px;
     color: #555555;
     overflow: auto;
@@ -897,13 +897,15 @@ sup {vertical-align: super;}
 
 /* Only set these options if we're showing the js container */
 .jsenabled .choosercontainer #chooseform .alloptions {
-    max-height: 550px;
     overflow-x: hidden;
     overflow-y: auto;
     max-width: 20.3em;
     box-shadow: inset 0px 0px 30px 0px #CCCCCC;
     -webkit-box-shadow: inset 0px 0px 30px 0px #CCCCCC;
     -moz-box-shadow: inset 0px 0px 30px 0px #CCCCCC;
+}
+.dir-rtl.jsenabled .choosercontainer #chooseform .alloptions {
+    max-width: 18.3em;
 }
 
 /* Settings for option rows and option subtypes */
@@ -968,7 +970,6 @@ sup {vertical-align: super;}
     background-color: #FFFFFF;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: 550px;
     line-height: 2em;
 }
 

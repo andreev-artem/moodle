@@ -505,7 +505,7 @@ M.core_dock.fixTitleOrientation = function(item, title, text) {
             break;
     }
 
-    if (Y.UA.ie > 7) {
+    if (Y.UA.ie == 8) {
         // IE8 can flip the text via CSS but not handle SVG
         title.setContent(text);
         title.setAttribute('style', 'writing-mode: tb-rl; filter: flipV flipH;display:inline;');
@@ -916,7 +916,7 @@ M.core_dock.genericblock.prototype = {
             }, this);
             // Add a close icon
             // Must set the image src seperatly of we get an error with XML strict headers
-            var closeicon = Y.Node.create('<span class="hidepanelicon" tabindex="0"><img alt="" style="width:11px;height:11px;cursor:pointer;" /></span>');
+            var closeicon = Y.Node.create('<span class="hidepanelicon" tabindex="0"><img alt="'+M.str.block.hidepanel+'" title="'+M.str.block.hidedockpanel+'" style="width:11px;height:11px;cursor:pointer;"/></span>');
             closeicon.one('img').setAttribute('src', M.util.image_url('t/dockclose', 'moodle'));
             closeicon.on('forceclose|click', this.hide, this);
             closeicon.on('dock:actionkey',this.hide, this, {actions:{enter:true,toggle:true}});
@@ -958,7 +958,7 @@ M.core_dock.genericblock.prototype = {
         placeholder.replace(this.Y.Node.getDOMNode(this.cachedcontentnode));
         this.cachedcontentnode = this.Y.one('#'+this.cachedcontentnode.get('id'));
 
-        var commands = this.cachedcontentnode.one('.title .commands');
+        var commands = dockitem.commands;
         if (commands) {
             commands.all('.hidepanelicon').remove();
             commands.all('.moveto').remove();

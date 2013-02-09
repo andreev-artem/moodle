@@ -766,13 +766,15 @@ class course_enrolment_manager {
 
         $users = array();
         foreach ($userroles as $userrole) {
+            $contextid = $userrole->contextid;
+            unset($userrole->contextid); // This would collide with user avatar.
             if (!array_key_exists($userrole->id, $users)) {
                 $users[$userrole->id] = $this->prepare_user_for_display($userrole, $extrafields, $now);
             }
             $a = new stdClass;
             $a->role = $roles[$userrole->roleid]->localname;
             $changeable = ($userrole->component == '');
-            if ($userrole->contextid == $this->context->id) {
+            if ($contextid == $this->context->id) {
                 $roletext = get_string('rolefromthiscourse', 'enrol', $a);
             } else {
                 $changeable = false;
@@ -790,7 +792,9 @@ class course_enrolment_manager {
                         break;
                 }
             }
-            $users[$userrole->id]['roles'] = array();
+            if (!isset($users[$userrole->id]['roles'])) {
+                $users[$userrole->id]['roles'] = array();
+            }
             $users[$userrole->id]['roles'][$userrole->roleid] = array(
                 'text' => $roletext,
                 'unchangeable' => !$changeable

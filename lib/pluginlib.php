@@ -89,6 +89,16 @@ class plugin_manager {
     }
 
     /**
+     * Reset any caches
+     * @param bool $phpunitreset
+     */
+    public static function reset_caches($phpunitreset = false) {
+        if ($phpunitreset) {
+            self::$singletoninstance = null;
+        }
+    }
+
+    /**
      * Returns a tree of known plugins and information about them
      *
      * @param bool $disablecache force reload, cache can be used otherwise
@@ -650,6 +660,16 @@ class available_update_checker {
     }
 
     /**
+     * Reset any caches
+     * @param bool $phpunitreset
+     */
+    public static function reset_caches($phpunitreset = false) {
+        if ($phpunitreset) {
+            self::$singletoninstance = null;
+        }
+    }
+
+    /**
      * Returns the timestamp of the last execution of {@link fetch()}
      *
      * @return int|null null if it has never been executed or we don't known
@@ -1171,19 +1191,28 @@ class available_update_checker {
                 foreach ($componentupdates as $componentupdate) {
                     if ($componentupdate->version == $componentchange['version']) {
                         if ($component == 'core') {
-                            // in case of 'core' this is enough, we already know that the
-                            // $componentupdate is a real update with higher version
-                            $notifications[] = $componentupdate;
+                            // In case of 'core', we already know that the $componentupdate
+                            // is a real update with higher version ({@see self::get_update_info()}).
+                            // We just perform additional check for the release property as there
+                            // can be two Moodle releases having the same version (e.g. 2.4.0 and 2.5dev shortly
+                            // after the release). We can do that because we have the release info
+                            // always available for the core.
+                            if ((string)$componentupdate->release === (string)$componentchange['release']) {
+                                $notifications[] = $componentupdate;
+                            }
                         } else {
-                            // use the plugin_manager to check if the reported $componentchange
-                            // is a real update with higher version. such a real update must be
-                            // present in the 'availableupdates' property of one of the component's
-                            // available_update_info object
+                            // Use the plugin_manager to check if the detected $componentchange
+                            // is a real update with higher version. That is, the $componentchange
+                            // is present in the array of {@link available_update_info} objects
+                            // returned by the plugin's available_updates() method.
                             list($plugintype, $pluginname) = normalize_component($component);
-                            if (!empty($plugins[$plugintype][$pluginname]->availableupdates)) {
-                                foreach ($plugins[$plugintype][$pluginname]->availableupdates as $availableupdate) {
-                                    if ($availableupdate->version == $componentchange['version']) {
-                                        $notifications[] = $componentupdate;
+                            if (!empty($plugins[$plugintype][$pluginname])) {
+                                $availableupdates = $plugins[$plugintype][$pluginname]->available_updates();
+                                if (!empty($availableupdates)) {
+                                    foreach ($availableupdates as $availableupdate) {
+                                        if ($availableupdate->version == $componentchange['version']) {
+                                            $notifications[] = $componentupdate;
+                                        }
                                     }
                                 }
                             }
@@ -1302,7 +1331,7 @@ class available_update_checker {
             $message->name              = 'availableupdate';
             $message->userfrom          = $mainadmin;
             $message->userto            = $admin;
-            $message->subject           = get_string('updatenotifications', 'core_admin');
+            $message->subject           = get_string('updatenotificationsubject', 'core_admin', array('siteurl' => $CFG->wwwroot));
             $message->fullmessage       = $text;
             $message->fullmessageformat = FORMAT_PLAIN;
             $message->fullmessagehtml   = $html;
@@ -2513,13 +2542,5 @@ class plugininfo_local extends plugininfo_base {
 
     public function get_uninstall_url() {
         return new moodle_url('/admin/localplugins.php', array('delete' => $this->name, 'sesskey' => sesskey()));
-    }
-
-    public function get_settings_url() {
-        if (file_exists($this->full_path('settings.php'))) {
-            return new moodle_url('/admin/settings.php', array('section' => 'local_' . $this->name));
-        } else {
-            return parent::get_settings_url();
-        }
     }
 }
